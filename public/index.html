@@ -157,9 +157,9 @@ function mkFallback() {
 }
 async function callClaude(content, maxTokens) {
   maxTokens = maxTokens || 1200;
-  const r = await fetch("/api/claude", {
+  const r = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
-    headers:{"Content-Type":"application/json"},
+    headers: { "Content-Type": "application/json", "anthropic-dangerous-direct-browser-access": "true" },
     body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: maxTokens, messages: [{ role: "user", content }] })
   });
   if (!r.ok) {
@@ -255,160 +255,173 @@ function App() {
     let profile = null;
     try {
       const raw = await callClaude(
-        "Analyze Instagram handle @" + h + ' for The Coffee Code (TCC), Colombian specialty espresso.\nTCC: grown, processed, dried, rested, roasted on Finca La Maria in Antioquia, Colombia.\nAir-shipped within days of roasting. Harvest date + roast date on every bag.\n\nReturn ONLY valid JSON. Start your response with { and end with }. No other text.\n\n{"inferredName":"first name or Unknown","estimatedFollowers":"50K-200K","estimatedEngagement":"3-6%","inferredNiche":"most likely niche","inferredLocation":"US city or United States","contentStyle":"2 sentences on content style","tccFitScore":7,"tccFitReason":"2 sentences on TCC fit","audienceProfile":"1 sentence on followers","bestAngle":"best DM hook for TCC","redFlags":"concerns or None","suggestedTier":"T1","tierLabel":"Specialty Coffee","outreachPriority":"High","recommendedFirstAction":"1 action today","dmTiming":"best day and time","sampleStrategy":"which TCC angle resonates","notes":"other intelligence"}'
-      );
-      profile = exJSON(raw);
-      if (!profile) throw new Error("Could not parse response \u2014 saved with defaults");
-    } catch (e) {
-      setLoadErr(e.message);
-      profile = mkFallback();
-    }
-    if (typeof profile.tccFitScore !== "number") profile.tccFitScore = parseInt(profile.tccFitScore) || 5;
-    const newInf = __spreadValues({ handle: "@" + h, stage: "researched", actions: {}, dmDate: null, sampleDate: null, firstPostDate: null, addedDate: tod(), notes: "" }, profile);
-    await dbSave(newInf);
-    const fresh = await dbLoad();
-    setInfs(fresh);
-    const saved = fresh.find((i) => i.handle === "@" + h) || newInf;
-    setSel(saved);
-    setHdl("");
-    setShowAdd(false);
-    setTab("profile");
-    setNotes("");
-    setDmText("");
-    setLoading(false);
-  }
-  async function genDM(inf) {
-    setDmLoad(true);
-    setDmText("");
-    setDmErr("");
-    try {
-      const t = await callClaude(
-        "Write 3 outreach DMs for The Coffee Code (TCC).\nTCC: specialty espresso grown, processed, and roasted on one farm in Colombia.\nAir-shipped within days of roasting. Harvest + roast date on every bag.\n\nCreator: " + inf.handle + " | Niche: " + (inf.inferredNiche || "coffee") + " | Angle: " + (inf.bestAngle || "farm freshness") + "\n\nRules: No emoji. No hashtags. Peer-to-peer tone. Line 1 specific to their niche.\n\nOPENER:\n[Cold DM. 3 sentences. Specific hook. Yes/no question about free sample kit.]\n\nFOLLOW-UP:\n[Day 3 no reply. 2 sentences. Different angle. Light urgency.]\n\nSAMPLE PITCH:\n[After reply. 3 sentences. Free sample. Just need their address.]",
-        800
-      );
-      setDmText(t);
-    } catch (e) {
-      setDmErr(e.message);
-    }
-    setDmLoad(false);
-  }
-  const dueToday = infs.filter((i) => nextAct(i).urg === "high");
-  const filtered = infs.filter((i) => {
-    const q = srch.toLowerCase();
-    return (!q || i.handle.toLowerCase().includes(q) || (i.inferredNiche || "").toLowerCase().includes(q)) && (fStg === "all" || i.stage === fStg);
-  });
-  const cnt = (id) => infs.filter((i) => i.stage === id).length;
-  const G = "#c9943a";
-  const BG = "#060504";
-  const PAN = "#0c0b08";
-  const CARD = "#100f0b";
-  const BOR = "#1e1b12";
-  const DIM = "#3a3020";
-  const MUT = "#7a6840";
-  const TXT = "#e4dccb";
-  const pill = (on, col) => {
-    col = col || G;
-    return { padding: "3px 9px", background: on ? col + "18" : "transparent", border: "1px solid " + (on ? col : BOR), color: on ? col : MUT, fontFamily: "monospace", fontSize: "10px", borderRadius: "2px" };
-  };
-  return /* @__PURE__ */ React.createElement("div", { style: { height: "100vh", background: BG, color: TXT, fontFamily: "Georgia,serif", fontSize: "13px", display: "flex", flexDirection: "column", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { background: PAN, borderBottom: "1px solid " + BOR, padding: "10px 16px", display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "8px", letterSpacing: "3px", color: MUT, fontFamily: "monospace", textTransform: "uppercase" } }, "THE COFFEE CODE"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "15px", fontWeight: "bold", color: G } }, "Influencer CRM")), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "9px", fontFamily: "monospace", color: syncing ? "#f59e0b" : "#10b981" } }, syncing ? "syncing..." : "\u25CF live"), [["Total", infs.length, TXT], ["Due", dueToday.length, dueToday.length > 0 ? "#ef4444" : MUT], ["Active", cnt("converting"), "#10b981"]].map(([l, v, c]) => /* @__PURE__ */ React.createElement("div", { key: l, style: { textAlign: "center", minWidth: "34px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "15px", fontWeight: "bold", fontFamily: "monospace", color: c, lineHeight: 1 } }, v), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "8px", color: DIM, fontFamily: "monospace" } }, l))), /* @__PURE__ */ React.createElement("button", { onClick: () => {
-    setShowAdd((v) => !v);
-    setLoadErr("");
-  }, style: __spreadProps(__spreadValues({}, pill(showAdd)), { padding: "6px 12px", fontSize: "11px" }) }, showAdd ? "\u2715" : "+ Add")), showAdd && /* @__PURE__ */ React.createElement("div", { style: { background: "#0f0d07", borderBottom: "1px solid " + BOR, padding: "10px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "10px", color: MUT, fontFamily: "monospace", marginBottom: "7px" } }, "Enter any Instagram handle \u2014 AI builds the full profile"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" } }, /* @__PURE__ */ React.createElement(
-    "input",
-    {
-      value: hdl,
-      onChange: (e) => setHdl(e.target.value),
-      onKeyDown: (e) => e.key === "Enter" && !loading && hdl.trim() && buildProfile(),
-      placeholder: "tannercolsoncoffee",
-      style: { flex: 1, minWidth: "160px" },
-      autoFocus: true
-    }
-  ), /* @__PURE__ */ React.createElement("button", { onClick: buildProfile, disabled: loading || !hdl.trim(), style: __spreadProps(__spreadValues({}, pill(true, G)), { padding: "7px 14px", fontSize: "12px" }) }, loading ? "Analyzing..." : "Build Profile"), loading && /* @__PURE__ */ React.createElement("span", { style: { fontSize: "11px", color: G, fontFamily: "monospace" } }, "AI working...")), loadErr && /* @__PURE__ */ React.createElement("div", { style: { marginTop: "7px", fontSize: "11px", color: "#f59e0b", background: "#f59e0b10", border: "1px solid #f59e0b30", padding: "6px 9px", borderRadius: "3px", fontFamily: "monospace" } }, loadErr)), dueToday.length > 0 && /* @__PURE__ */ React.createElement("div", { style: { background: "#140a00", borderBottom: "1px solid #3a1800", padding: "7px 16px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "9px", color: "#f97316", letterSpacing: "2px", fontFamily: "monospace", marginBottom: "4px" } }, "TODAY \u2014 ", dueToday.length, " NEED ACTION"), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "5px", flexWrap: "wrap" } }, dueToday.map((inf) => {
-    const na = nextAct(inf);
-    return /* @__PURE__ */ React.createElement(
-      "button",
-      {
-        key: inf.handle,
-        onClick: () => {
-          setSel(inf);
-          setTab("actions");
-          setNotes(inf.notes || "");
-        },
-        style: { background: "#1e0e0050", border: "1px solid #3a2010", color: TXT, padding: "3px 8px", borderRadius: "3px", fontSize: "11px" }
-      },
-      /* @__PURE__ */ React.createElement("span", { style: { color: G } }, inf.handle),
-      /* @__PURE__ */ React.createElement("span", { style: { color: "#f97316", marginLeft: "6px" } }, na.lbl)
-    );
-  }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flex: 1, overflow: "hidden", minHeight: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { width: "235px", borderRight: "1px solid " + BOR, display: "flex", flexDirection: "column", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { padding: "8px 10px", borderBottom: "1px solid " + DIM, flexShrink: 0 } }, /* @__PURE__ */ React.createElement("input", { value: srch, onChange: (e) => setSrch(e.target.value), placeholder: "Search...", style: { width: "100%", marginBottom: "6px" } }), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "3px", flexWrap: "wrap" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => setFStg("all"), style: __spreadProps(__spreadValues({}, pill(fStg === "all")), { fontSize: "9px" }) }, "All ", infs.length), STAGES.filter((s) => cnt(s.id) > 0).map((s) => /* @__PURE__ */ React.createElement("button", { key: s.id, onClick: () => setFStg(s.id), style: __spreadProps(__spreadValues({}, pill(fStg === s.id, s.color)), { fontSize: "9px" }) }, s.label, " ", cnt(s.id))))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, overflowY: "auto" } }, filtered.length === 0 && /* @__PURE__ */ React.createElement("div", { style: { padding: "28px 12px", textAlign: "center", color: DIM, fontSize: "11px", lineHeight: 2.2 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "22px", opacity: 0.12, marginBottom: "6px" } }, "\u2615"), infs.length === 0 ? "No contacts yet.\nTap + Add to start." : "No results."), filtered.map((inf) => {
-    const stg = gs(inf.stage);
-    const na = nextAct(inf);
-    const isSel = (sel == null ? void 0 : sel.handle) === inf.handle;
-    return /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        key: inf.handle,
-        onClick: () => {
-          setSel(inf);
-          setNotes(inf.notes || "");
-          setTab("profile");
-          setDmText("");
-          setDmErr("");
-        },
-        style: { padding: "9px 11px", borderBottom: "1px solid " + DIM, cursor: "pointer", background: isSel ? "#161108" : "transparent", borderLeft: isSel ? "3px solid " + G : "3px solid transparent" }
-      },
-      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", marginBottom: "2px" } }, /* @__PURE__ */ React.createElement("div", { style: { color: G, fontSize: "12px", fontWeight: "bold", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "138px" } }, inf.handle), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "11px", fontFamily: "monospace", color: sc(inf.tccFitScore || 0), fontWeight: "bold" } }, inf.tccFitScore || "?", "/10")),
-      /* @__PURE__ */ React.createElement("div", { style: { fontSize: "10px", color: MUT, marginBottom: "4px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, inf.inferredNiche || "\u2014"),
-      /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("span", { style: { fontSize: "9px", background: stg.color + "20", color: stg.color, border: "1px solid " + stg.color + "40", padding: "1px 5px", borderRadius: "10px", fontFamily: "monospace" } }, stg.label), na.urg === "high" && /* @__PURE__ */ React.createElement("span", { style: { fontSize: "9px", color: "#ef4444" } }, "!"))
-    );
-  }))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 } }, !sel ? /* @__PURE__ */ React.createElement("div", { style: { flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "10px", color: DIM } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "32px", opacity: 0.1 } }, "\u2615"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "monospace", fontSize: "11px", textAlign: "center", lineHeight: 2 } }, "Add a handle to get started.", /* @__PURE__ */ React.createElement("br", null), /* @__PURE__ */ React.createElement("span", { style: { color: "#10b981", fontSize: "10px" } }, "Changes sync live with your team.")), /* @__PURE__ */ React.createElement("button", { onClick: () => setShowAdd(true), style: __spreadProps(__spreadValues({}, pill(true, G)), { padding: "7px 16px", fontSize: "12px" }) }, "+ Add Handle")) : /* @__PURE__ */ React.createElement(React.Fragment, null, /* @__PURE__ */ React.createElement("div", { style: { background: PAN, borderBottom: "1px solid " + BOR, padding: "10px 14px", flexShrink: 0 } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "7px" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "17px", fontWeight: "bold", color: G } }, sel.handle), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "10px", color: MUT, marginTop: "1px" } }, sel.inferredName && sel.inferredName !== "Unknown" ? sel.inferredName + " \xB7 " : "", sel.inferredLocation, " \xB7 ", sel.estimatedFollowers)), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "7px", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", { style: { textAlign: "center", background: sc(sel.tccFitScore) + "18", border: "1px solid " + sc(sel.tccFitScore) + "40", padding: "4px 9px", borderRadius: "3px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "15px", fontWeight: "bold", fontFamily: "monospace", color: sc(sel.tccFitScore), lineHeight: 1 } }, sel.tccFitScore || "?", "/10"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "7px", color: DIM } }, "FIT")), /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      onClick: () => {
-        dbDel(sel.handle);
-        setInfs((p) => p.filter((i) => i.handle !== sel.handle));
-        setSel(null);
-      },
-      style: __spreadProps(__spreadValues({}, pill(false)), { color: "#ef444450", borderColor: "#ef444430", fontSize: "9px", padding: "3px 7px" })
-    },
-    "\u2715"
-  ))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "3px", flexWrap: "wrap" } }, STAGES.map((s) => /* @__PURE__ */ React.createElement("button", { key: s.id, onClick: () => pushUpdate(sel.handle, { stage: s.id }), style: __spreadProps(__spreadValues({}, pill(sel.stage === s.id, s.color)), { fontSize: "8px", padding: "2px 6px" }) }, s.label)))), /* @__PURE__ */ React.createElement("div", { style: { background: PAN, borderBottom: "1px solid " + BOR, display: "flex", paddingLeft: "10px", flexShrink: 0 } }, [["profile", "Profile"], ["actions", "Checklist"], ["dm", "DM"], ["notes", "Notes"]].map(([id, label]) => /* @__PURE__ */ React.createElement(
-    "button",
-    {
-      key: id,
-      onClick: () => setTab(id),
-      style: { padding: "7px 12px", background: "transparent", border: "none", borderBottom: tab === id ? "2px solid " + G : "2px solid transparent", color: tab === id ? G : MUT, fontSize: "11px" }
-    },
-    label
-  ))), /* @__PURE__ */ React.createElement("div", { style: { flex: 1, overflowY: "auto", padding: "12px 14px" } }, tab === "profile" && /* @__PURE__ */ React.createElement("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "9px" } }, /* @__PURE__ */ React.createElement("div", { style: { background: CARD, border: "1px solid " + BOR, borderRadius: "4px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "8px", color: MUT, letterSpacing: "2px", textTransform: "uppercase", fontFamily: "monospace", marginBottom: "7px" } }, "Profile"), [["Niche", sel.inferredNiche], ["Tier", sel.suggestedTier], ["Followers", sel.estimatedFollowers], ["Engagement", sel.estimatedEngagement], ["Location", sel.inferredLocation], ["Priority", sel.outreachPriority]].filter(([, v]) => v && v !== "Unknown").map(([l, v]) => /* @__PURE__ */ React.createElement("div", { key: l, style: { display: "flex", gap: "7px", marginBottom: "5px", fontSize: "11px" } }, /* @__PURE__ */ React.createElement("span", { style: { color: DIM, fontFamily: "monospace", minWidth: "72px", flexShrink: 0 } }, l), /* @__PURE__ */ React.createElement("span", { style: { color: TXT } }, v)))), /* @__PURE__ */ React.createElement("div", { style: { background: CARD, border: "1px solid " + BOR, borderRadius: "4px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "8px", color: MUT, letterSpacing: "2px", textTransform: "uppercase", fontFamily: "monospace", marginBottom: "7px" } }, "TCC Fit"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "11px", color: TXT, lineHeight: "1.7", marginBottom: "7px" } }, sel.tccFitReason), sel.redFlags && sel.redFlags !== "None" && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "10px", color: "#ef4444", background: "#ef444410", border: "1px solid #ef444430", padding: "4px 7px", borderRadius: "3px" } }, sel.redFlags)), /* @__PURE__ */ React.createElement("div", { style: { background: CARD, border: "1px solid " + BOR, borderRadius: "4px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "8px", color: MUT, letterSpacing: "2px", textTransform: "uppercase", fontFamily: "monospace", marginBottom: "7px" } }, "Strategy"), [["Best Angle", sel.bestAngle], ["DM Timing", sel.dmTiming], ["Sample", sel.sampleStrategy], ["Action", sel.recommendedFirstAction]].filter(([, v]) => v).map(([l, v]) => /* @__PURE__ */ React.createElement("div", { key: l, style: { marginBottom: "7px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "8px", color: MUT, fontFamily: "monospace", marginBottom: "2px" } }, l.toUpperCase()), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "11px", color: TXT, lineHeight: "1.5" } }, v)))), /* @__PURE__ */ React.createElement("div", { style: { background: CARD, border: "1px solid " + BOR, borderRadius: "4px", padding: "10px" } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "8px", color: MUT, letterSpacing: "2px", textTransform: "uppercase", fontFamily: "monospace", marginBottom: "7px" } }, "Audience"), sel.contentStyle && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "11px", color: TXT, lineHeight: "1.6", marginBottom: "7px" } }, sel.contentStyle), sel.audienceProfile && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "11px", color: MUT, lineHeight: "1.6" } }, sel.audienceProfile)), /* @__PURE__ */ React.createElement("div", { style: { gridColumn: "1/-1", background: "#18120010", border: "1px solid #3a2810", borderRadius: "4px", padding: "8px 12px", display: "flex", justifyContent: "space-between", alignItems: "center" } }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "8px", color: MUT, fontFamily: "monospace", letterSpacing: "2px" } }, "NEXT ACTION"), /* @__PURE__ */ React.createElement("div", { style: { fontSize: "12px", color: UC[nextAct(sel).urg], marginTop: "2px", fontWeight: "bold" } }, nextAct(sel).lbl)), /* @__PURE__ */ React.createElement("button", { onClick: () => setTab("actions"), style: __spreadProps(__spreadValues({}, pill(true, G)), { padding: "4px 10px" }) }, "Checklist"))), tab === "actions" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { marginBottom: "12px" } }, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", justifyContent: "space-between", fontSize: "10px", color: MUT, fontFamily: "monospace", marginBottom: "4px" } }, /* @__PURE__ */ React.createElement("span", null, "Progress"), /* @__PURE__ */ React.createElement("span", null, Object.values(sel.actions || {}).filter(Boolean).length, "/", ACTIONS.length)), /* @__PURE__ */ React.createElement("div", { style: { height: "3px", background: BOR, borderRadius: "2px", overflow: "hidden" } }, /* @__PURE__ */ React.createElement("div", { style: { height: "100%", background: G, transition: "width .3s", width: Object.values(sel.actions || {}).filter(Boolean).length / ACTIONS.length * 100 + "%" } }))), /* @__PURE__ */ React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: "4px" } }, ACTIONS.map((action) => {
-    const checked = !!(sel.actions || {})[action.id];
-    const na = nextAct(sel);
-    const isNext = na.id === action.id;
-    return /* @__PURE__ */ React.createElement("div", { key: action.id, style: { background: checked ? "#10b98108" : isNext ? "#c9943a15" : CARD, border: "1px solid " + (checked ? "#10b98130" : isNext ? "#c9943a50" : BOR), borderRadius: "3px", padding: "8px 10px", display: "flex", alignItems: "center", gap: "9px" } }, /* @__PURE__ */ React.createElement(
-      "div",
-      {
-        onClick: () => tickAction(sel.handle, action.id),
-        style: { width: "16px", height: "16px", borderRadius: "3px", flexShrink: 0, border: "2px solid " + (checked ? "#10b981" : isNext ? G : BOR), background: checked ? "#10b981" : "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }
-      },
-      checked && /* @__PURE__ */ React.createElement("span", { style: { color: "#000", fontSize: "10px", fontWeight: "bold" } }, "\u2713")
-    ), /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "11px", color: checked ? MUT : isNext ? G : TXT, textDecoration: checked ? "line-through" : "none" } }, action.label), action.adv && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "9px", color: DIM, fontFamily: "monospace", marginTop: "1px" } }, gs(action.adv).label)), isNext && !checked && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "9px", color: G, fontFamily: "monospace", background: "#c9943a15", border: "1px solid #c9943a40", padding: "2px 5px", borderRadius: "10px" } }, "now"), action.id === "first_contact" && sel.dmDate && checked && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "9px", color: DIM, fontFamily: "monospace" } }, sel.dmDate), action.id === "sample_shipped" && sel.sampleDate && checked && /* @__PURE__ */ React.createElement("div", { style: { fontSize: "9px", color: DIM, fontFamily: "monospace" } }, sel.sampleDate));
-  }))), tab === "dm" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { display: "flex", gap: "9px", alignItems: "center", marginBottom: "11px" } }, /* @__PURE__ */ React.createElement("button", { onClick: () => genDM(sel), disabled: dmLoad, style: __spreadProps(__spreadValues({}, pill(true, G)), { padding: "7px 16px", fontSize: "12px" }) }, dmLoad ? "Generating..." : "Generate DMs"), /* @__PURE__ */ React.createElement("span", { style: { fontSize: "9px", color: DIM, fontFamily: "monospace" } }, "Opener \xB7 Follow-up \xB7 Sample Pitch")), dmErr && /* @__PURE__ */ React.createElement("div", { style: { marginBottom: "9px", fontSize: "11px", color: "#ef4444", fontFamily: "monospace" } }, dmErr), dmText ? /* @__PURE__ */ React.createElement("div", { style: { background: CARD, border: "1px solid " + BOR, borderRadius: "4px", padding: "12px" } }, dmText.split("\n").map((line, i) => {
-    const isH = /^(OPENER|FOLLOW-UP|SAMPLE PITCH):/.test(line);
-    return /* @__PURE__ */ React.createElement("div", { key: i, style: { color: isH ? G : TXT, fontStyle: isH ? "normal" : "italic", fontWeight: isH ? "bold" : "normal", marginTop: isH && i > 0 ? "12px" : "0", fontFamily: isH ? "monospace" : "inherit", fontSize: isH ? "8px" : "12px", letterSpacing: isH ? "1.5px" : "0", lineHeight: "1.8" } }, line);
-  })) : !dmLoad && /* @__PURE__ */ React.createElement("div", { style: { background: CARD, border: "1px solid " + BOR, borderRadius: "4px", padding: "18px", textAlign: "center", color: DIM, fontSize: "11px" } }, "Tap Generate to create personalized DMs for ", sel.handle, ".")), tab === "notes" && /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { style: { fontSize: "9px", color: MUT, fontFamily: "monospace", marginBottom: "6px" } }, "Shared with team \xB7 auto-saved"), /* @__PURE__ */ React.createElement(
-    "textarea",
-    {
-      value: notes,
-      onChange: (e) => setNotes(e.target.value),
-      onBlur: () => pushUpdate(sel.handle, { notes }),
-      placeholder: "Notes for " + sel.handle + "...\n\n- What did they reply?\n- Personal details for next DM?\n- Which sample angle worked?",
-      style: { width: "100%", minHeight: "160px", padding: "10px", borderRadius: "4px", resize: "vertical", lineHeight: "1.7" }
-    }
-  ), /* @__PURE__ */ React.createElement("div", { style: { marginTop: "7px", fontSize: "9px", color: DIM, fontFamily: "monospace" } }, "Added: ", sel.addedDate)))))));
+        "Analyze Instagram handle @" + h + ` for The Coffee Code (TCC), a Colombian specialty espresso brand.
+TCC BRAND STORY (use this exactly \u2014 do not say TCC grows coffee):
+Alejandro buys specialty coffee cherry from farms near Canon de Taparto, Antioquia, Colombia.
+He processes it at his own specialty wet mill, measuring every variable \u2014 fermentation, drying, moisture \u2014 aiming for perfection in every lot, all year round.
+After the ideal reposo (resting) period on the farm, he roasts at the perfect moment.
+Bags are shipped by plane and arrive at the customer's door 7-10 days after roasting.
+The focus is twofold: freshness after harvest in optimal controlled conditions, AND freshness after roasting \u2014 both delivered together, which no US brand can replicate.
+Every bag is stamped with harvest date and roast date.
+
+Return ONLY valid JSON. Start your response with { and end with }. No other text.
+
+{“inferredName”:“first name or Unknown”,“estimatedFollowers”:“50K-200K”,“estimatedEngagement”:“3-6%”,“inferredNiche”:“most likely niche”,“inferredLocation”:“US city or United States”,“contentStyle”:“2 sentences on content style”,“tccFitScore”:7,“tccFitReason”:“2 sentences on TCC fit”,“audienceProfile”:“1 sentence on followers”,“bestAngle”:“best DM hook for TCC”,“redFlags”:“concerns or None”,“suggestedTier”:“T1”,“tierLabel”:“Specialty Coffee”,“outreachPriority”:“High”,“recommendedFirstAction”:“1 action today”,“dmTiming”:“best day and time”,“sampleStrategy”:“which TCC angle resonates”,“notes”:“other intelligence”}`
+);
+profile = exJSON(raw);
+if (!profile) throw new Error(“Could not parse response \u2014 saved with defaults”);
+} catch (e) {
+setLoadErr(e.message);
+profile = mkFallback();
+}
+if (typeof profile.tccFitScore !== “number”) profile.tccFitScore = parseInt(profile.tccFitScore) || 5;
+const newInf = __spreadValues({ handle: “@” + h, stage: “researched”, actions: {}, dmDate: null, sampleDate: null, firstPostDate: null, addedDate: tod(), notes: “” }, profile);
+await dbSave(newInf);
+const fresh = await dbLoad();
+setInfs(fresh);
+const saved = fresh.find((i) => i.handle === “@” + h) || newInf;
+setSel(saved);
+setHdl(””);
+setShowAdd(false);
+setTab(“profile”);
+setNotes(””);
+setDmText(””);
+setLoading(false);
+}
+async function genDM(inf) {
+setDmLoad(true);
+setDmText(””);
+setDmErr(””);
+try {
+const t = await callClaude(
+“Write 3 outreach DMs for The Coffee Code (TCC).\nTCC BRAND STORY \u2014 use this precisely:\nAlejandro sources specialty coffee cherry from farms near Canon de Taparto, Antioquia, Colombia.\nHe processes it at his own specialty wet mill, measuring every variable and aiming for perfection in every lot, all year round.\nAfter the ideal reposo period on the farm, he roasts at the perfect moment.\nBags arrive at the customer’s door 7-10 days after roasting, shipped by plane.\nThe unique angle: freshness after harvest in optimal controlled conditions PLUS freshness after roasting \u2014 both together. No US brand does this.\nEvery bag stamped with harvest date and roast date.\n\nCreator: “ + inf.handle + “ | Niche: “ + (inf.inferredNiche || “coffee”) + “ | Angle: “ + (inf.bestAngle || “farm freshness”) + “\n\nRules: No emoji. No hashtags. Peer-to-peer tone. Line 1 specific to their niche.\n\nOPENER:\n[Cold DM. 3 sentences. Specific hook. Yes/no question about free sample kit.]\n\nFOLLOW-UP:\n[Day 3 no reply. 2 sentences. Different angle. Light urgency.]\n\nSAMPLE PITCH:\n[After reply. 3 sentences. Free sample. Just need their address.]”,
+800
+);
+setDmText(t);
+} catch (e) {
+setDmErr(e.message);
+}
+setDmLoad(false);
+}
+const dueToday = infs.filter((i) => nextAct(i).urg === “high”);
+const filtered = infs.filter((i) => {
+const q = srch.toLowerCase();
+return (!q || i.handle.toLowerCase().includes(q) || (i.inferredNiche || “”).toLowerCase().includes(q)) && (fStg === “all” || i.stage === fStg);
+});
+const cnt = (id) => infs.filter((i) => i.stage === id).length;
+const G = “#c9943a”;
+const BG = “#060504”;
+const PAN = “#0c0b08”;
+const CARD = “#100f0b”;
+const BOR = “#1e1b12”;
+const DIM = “#3a3020”;
+const MUT = “#7a6840”;
+const TXT = “#e4dccb”;
+const pill = (on, col) => {
+col = col || G;
+return { padding: “3px 9px”, background: on ? col + “18” : “transparent”, border: “1px solid “ + (on ? col : BOR), color: on ? col : MUT, fontFamily: “monospace”, fontSize: “10px”, borderRadius: “2px” };
+};
+return /* @**PURE** */ React.createElement(“div”, { style: { height: “100vh”, background: BG, color: TXT, fontFamily: “Georgia,serif”, fontSize: “13px”, display: “flex”, flexDirection: “column”, overflow: “hidden” } }, /* @**PURE** */ React.createElement(“div”, { style: { background: PAN, borderBottom: “1px solid “ + BOR, padding: “10px 16px”, display: “flex”, alignItems: “center”, gap: “12px”, flexShrink: 0 } }, /* @**PURE** */ React.createElement(“div”, null, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “8px”, letterSpacing: “3px”, color: MUT, fontFamily: “monospace”, textTransform: “uppercase” } }, “THE COFFEE CODE”), /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “15px”, fontWeight: “bold”, color: G } }, “Influencer CRM”)), /* @**PURE** */ React.createElement(“div”, { style: { flex: 1 } }), /* @**PURE** */ React.createElement(“span”, { style: { fontSize: “9px”, fontFamily: “monospace”, color: syncing ? “#f59e0b” : “#10b981” } }, syncing ? “syncing…” : “\u25CF live”), [[“Total”, infs.length, TXT], [“Due”, dueToday.length, dueToday.length > 0 ? “#ef4444” : MUT], [“Active”, cnt(“converting”), “#10b981”]].map(([l, v, c]) => /* @**PURE** */ React.createElement(“div”, { key: l, style: { textAlign: “center”, minWidth: “34px” } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “15px”, fontWeight: “bold”, fontFamily: “monospace”, color: c, lineHeight: 1 } }, v), /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “8px”, color: DIM, fontFamily: “monospace” } }, l))), /* @**PURE** */ React.createElement(“button”, { onClick: () => {
+setShowAdd((v) => !v);
+setLoadErr(””);
+}, style: __spreadProps(__spreadValues({}, pill(showAdd)), { padding: “6px 12px”, fontSize: “11px” }) }, showAdd ? “\u2715” : “+ Add”)), showAdd && /* @**PURE** */ React.createElement(“div”, { style: { background: “#0f0d07”, borderBottom: “1px solid “ + BOR, padding: “10px 16px” } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “10px”, color: MUT, fontFamily: “monospace”, marginBottom: “7px” } }, “Enter any Instagram handle \u2014 AI builds the full profile”), /* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, gap: “8px”, flexWrap: “wrap”, alignItems: “center” } }, /* @**PURE** */ React.createElement(
+“input”,
+{
+value: hdl,
+onChange: (e) => setHdl(e.target.value),
+onKeyDown: (e) => e.key === “Enter” && !loading && hdl.trim() && buildProfile(),
+placeholder: “tannercolsoncoffee”,
+style: { flex: 1, minWidth: “160px” },
+autoFocus: true
+}
+), /* @**PURE** */ React.createElement(“button”, { onClick: buildProfile, disabled: loading || !hdl.trim(), style: __spreadProps(__spreadValues({}, pill(true, G)), { padding: “7px 14px”, fontSize: “12px” }) }, loading ? “Analyzing…” : “Build Profile”), loading && /* @**PURE** */ React.createElement(“span”, { style: { fontSize: “11px”, color: G, fontFamily: “monospace” } }, “AI working…”)), loadErr && /* @**PURE** */ React.createElement(“div”, { style: { marginTop: “7px”, fontSize: “11px”, color: “#f59e0b”, background: “#f59e0b10”, border: “1px solid #f59e0b30”, padding: “6px 9px”, borderRadius: “3px”, fontFamily: “monospace” } }, loadErr)), dueToday.length > 0 && /* @**PURE** */ React.createElement(“div”, { style: { background: “#140a00”, borderBottom: “1px solid #3a1800”, padding: “7px 16px” } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “9px”, color: “#f97316”, letterSpacing: “2px”, fontFamily: “monospace”, marginBottom: “4px” } }, “TODAY \u2014 “, dueToday.length, “ NEED ACTION”), /* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, gap: “5px”, flexWrap: “wrap” } }, dueToday.map((inf) => {
+const na = nextAct(inf);
+return /* @**PURE** */ React.createElement(
+“button”,
+{
+key: inf.handle,
+onClick: () => {
+setSel(inf);
+setTab(“actions”);
+setNotes(inf.notes || “”);
+},
+style: { background: “#1e0e0050”, border: “1px solid #3a2010”, color: TXT, padding: “3px 8px”, borderRadius: “3px”, fontSize: “11px” }
+},
+/* @**PURE** */ React.createElement(“span”, { style: { color: G } }, inf.handle),
+/* @**PURE** */ React.createElement(“span”, { style: { color: “#f97316”, marginLeft: “6px” } }, na.lbl)
+);
+}))), /* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, flex: 1, overflow: “hidden”, minHeight: 0 } }, /* @**PURE** */ React.createElement(“div”, { style: { width: “235px”, borderRight: “1px solid “ + BOR, display: “flex”, flexDirection: “column”, flexShrink: 0 } }, /* @**PURE** */ React.createElement(“div”, { style: { padding: “8px 10px”, borderBottom: “1px solid “ + DIM, flexShrink: 0 } }, /* @**PURE** */ React.createElement(“input”, { value: srch, onChange: (e) => setSrch(e.target.value), placeholder: “Search…”, style: { width: “100%”, marginBottom: “6px” } }), /* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, gap: “3px”, flexWrap: “wrap” } }, /* @**PURE** */ React.createElement(“button”, { onClick: () => setFStg(“all”), style: __spreadProps(__spreadValues({}, pill(fStg === “all”)), { fontSize: “9px” }) }, “All “, infs.length), STAGES.filter((s) => cnt(s.id) > 0).map((s) => /* @**PURE** */ React.createElement(“button”, { key: s.id, onClick: () => setFStg(s.id), style: __spreadProps(__spreadValues({}, pill(fStg === s.id, s.color)), { fontSize: “9px” }) }, s.label, “ “, cnt(s.id))))), /* @**PURE** */ React.createElement(“div”, { style: { flex: 1, overflowY: “auto” } }, filtered.length === 0 && /* @**PURE** */ React.createElement(“div”, { style: { padding: “28px 12px”, textAlign: “center”, color: DIM, fontSize: “11px”, lineHeight: 2.2 } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “22px”, opacity: 0.12, marginBottom: “6px” } }, “\u2615”), infs.length === 0 ? “No contacts yet.\nTap + Add to start.” : “No results.”), filtered.map((inf) => {
+const stg = gs(inf.stage);
+const na = nextAct(inf);
+const isSel = (sel == null ? void 0 : sel.handle) === inf.handle;
+return /* @**PURE** */ React.createElement(
+“div”,
+{
+key: inf.handle,
+onClick: () => {
+setSel(inf);
+setNotes(inf.notes || “”);
+setTab(“profile”);
+setDmText(””);
+setDmErr(””);
+},
+style: { padding: “9px 11px”, borderBottom: “1px solid “ + DIM, cursor: “pointer”, background: isSel ? “#161108” : “transparent”, borderLeft: isSel ? “3px solid “ + G : “3px solid transparent” }
+},
+/* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, justifyContent: “space-between”, marginBottom: “2px” } }, /* @**PURE** */ React.createElement(“div”, { style: { color: G, fontSize: “12px”, fontWeight: “bold”, overflow: “hidden”, textOverflow: “ellipsis”, whiteSpace: “nowrap”, maxWidth: “138px” } }, inf.handle), /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “11px”, fontFamily: “monospace”, color: sc(inf.tccFitScore || 0), fontWeight: “bold” } }, inf.tccFitScore || “?”, “/10”)),
+/* @**PURE** */ React.createElement(“div”, { style: { fontSize: “10px”, color: MUT, marginBottom: “4px”, overflow: “hidden”, textOverflow: “ellipsis”, whiteSpace: “nowrap” } }, inf.inferredNiche || “\u2014”),
+/* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, justifyContent: “space-between”, alignItems: “center” } }, /* @**PURE** */ React.createElement(“span”, { style: { fontSize: “9px”, background: stg.color + “20”, color: stg.color, border: “1px solid “ + stg.color + “40”, padding: “1px 5px”, borderRadius: “10px”, fontFamily: “monospace” } }, stg.label), na.urg === “high” && /* @**PURE** */ React.createElement(“span”, { style: { fontSize: “9px”, color: “#ef4444” } }, “!”))
+);
+}))), /* @**PURE** */ React.createElement(“div”, { style: { flex: 1, display: “flex”, flexDirection: “column”, overflow: “hidden”, minWidth: 0 } }, !sel ? /* @**PURE** */ React.createElement(“div”, { style: { flex: 1, display: “flex”, alignItems: “center”, justifyContent: “center”, flexDirection: “column”, gap: “10px”, color: DIM } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “32px”, opacity: 0.1 } }, “\u2615”), /* @**PURE** */ React.createElement(“div”, { style: { fontFamily: “monospace”, fontSize: “11px”, textAlign: “center”, lineHeight: 2 } }, “Add a handle to get started.”, /* @**PURE** */ React.createElement(“br”, null), /* @**PURE** */ React.createElement(“span”, { style: { color: “#10b981”, fontSize: “10px” } }, “Changes sync live with your team.”)), /* @**PURE** */ React.createElement(“button”, { onClick: () => setShowAdd(true), style: __spreadProps(__spreadValues({}, pill(true, G)), { padding: “7px 16px”, fontSize: “12px” }) }, “+ Add Handle”)) : /* @**PURE** */ React.createElement(React.Fragment, null, /* @**PURE** */ React.createElement(“div”, { style: { background: PAN, borderBottom: “1px solid “ + BOR, padding: “10px 14px”, flexShrink: 0 } }, /* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, alignItems: “flex-start”, justifyContent: “space-between”, marginBottom: “7px” } }, /* @**PURE** */ React.createElement(“div”, null, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “17px”, fontWeight: “bold”, color: G } }, sel.handle), /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “10px”, color: MUT, marginTop: “1px” } }, sel.inferredName && sel.inferredName !== “Unknown” ? sel.inferredName + “ \xB7 “ : “”, sel.inferredLocation, “ \xB7 “, sel.estimatedFollowers)), /* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, gap: “7px”, alignItems: “center” } }, /* @**PURE** */ React.createElement(“div”, { style: { textAlign: “center”, background: sc(sel.tccFitScore) + “18”, border: “1px solid “ + sc(sel.tccFitScore) + “40”, padding: “4px 9px”, borderRadius: “3px” } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “15px”, fontWeight: “bold”, fontFamily: “monospace”, color: sc(sel.tccFitScore), lineHeight: 1 } }, sel.tccFitScore || “?”, “/10”), /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “7px”, color: DIM } }, “FIT”)), /* @**PURE** */ React.createElement(
+“button”,
+{
+onClick: () => {
+dbDel(sel.handle);
+setInfs((p) => p.filter((i) => i.handle !== sel.handle));
+setSel(null);
+},
+style: __spreadProps(__spreadValues({}, pill(false)), { color: “#ef444450”, borderColor: “#ef444430”, fontSize: “9px”, padding: “3px 7px” })
+},
+“\u2715”
+))), /* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, gap: “3px”, flexWrap: “wrap” } }, STAGES.map((s) => /* @**PURE** */ React.createElement(“button”, { key: s.id, onClick: () => pushUpdate(sel.handle, { stage: s.id }), style: __spreadProps(__spreadValues({}, pill(sel.stage === s.id, s.color)), { fontSize: “8px”, padding: “2px 6px” }) }, s.label)))), /* @**PURE** */ React.createElement(“div”, { style: { background: PAN, borderBottom: “1px solid “ + BOR, display: “flex”, paddingLeft: “10px”, flexShrink: 0 } }, [[“profile”, “Profile”], [“actions”, “Checklist”], [“dm”, “DM”], [“notes”, “Notes”]].map(([id, label]) => /* @**PURE** */ React.createElement(
+“button”,
+{
+key: id,
+onClick: () => setTab(id),
+style: { padding: “7px 12px”, background: “transparent”, border: “none”, borderBottom: tab === id ? “2px solid “ + G : “2px solid transparent”, color: tab === id ? G : MUT, fontSize: “11px” }
+},
+label
+))), /* @**PURE** */ React.createElement(“div”, { style: { flex: 1, overflowY: “auto”, padding: “12px 14px” } }, tab === “profile” && /* @**PURE** */ React.createElement(“div”, { style: { display: “grid”, gridTemplateColumns: “1fr 1fr”, gap: “9px” } }, /* @**PURE** */ React.createElement(“div”, { style: { background: CARD, border: “1px solid “ + BOR, borderRadius: “4px”, padding: “10px” } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “8px”, color: MUT, letterSpacing: “2px”, textTransform: “uppercase”, fontFamily: “monospace”, marginBottom: “7px” } }, “Profile”), [[“Niche”, sel.inferredNiche], [“Tier”, sel.suggestedTier], [“Followers”, sel.estimatedFollowers], [“Engagement”, sel.estimatedEngagement], [“Location”, sel.inferredLocation], [“Priority”, sel.outreachPriority]].filter(([, v]) => v && v !== “Unknown”).map(([l, v]) => /* @**PURE** */ React.createElement(“div”, { key: l, style: { display: “flex”, gap: “7px”, marginBottom: “5px”, fontSize: “11px” } }, /* @**PURE** */ React.createElement(“span”, { style: { color: DIM, fontFamily: “monospace”, minWidth: “72px”, flexShrink: 0 } }, l), /* @**PURE** */ React.createElement(“span”, { style: { color: TXT } }, v)))), /* @**PURE** */ React.createElement(“div”, { style: { background: CARD, border: “1px solid “ + BOR, borderRadius: “4px”, padding: “10px” } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “8px”, color: MUT, letterSpacing: “2px”, textTransform: “uppercase”, fontFamily: “monospace”, marginBottom: “7px” } }, “TCC Fit”), /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “11px”, color: TXT, lineHeight: “1.7”, marginBottom: “7px” } }, sel.tccFitReason), sel.redFlags && sel.redFlags !== “None” && /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “10px”, color: “#ef4444”, background: “#ef444410”, border: “1px solid #ef444430”, padding: “4px 7px”, borderRadius: “3px” } }, sel.redFlags)), /* @**PURE** */ React.createElement(“div”, { style: { background: CARD, border: “1px solid “ + BOR, borderRadius: “4px”, padding: “10px” } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “8px”, color: MUT, letterSpacing: “2px”, textTransform: “uppercase”, fontFamily: “monospace”, marginBottom: “7px” } }, “Strategy”), [[“Best Angle”, sel.bestAngle], [“DM Timing”, sel.dmTiming], [“Sample”, sel.sampleStrategy], [“Action”, sel.recommendedFirstAction]].filter(([, v]) => v).map(([l, v]) => /* @**PURE** */ React.createElement(“div”, { key: l, style: { marginBottom: “7px” } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “8px”, color: MUT, fontFamily: “monospace”, marginBottom: “2px” } }, l.toUpperCase()), /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “11px”, color: TXT, lineHeight: “1.5” } }, v)))), /* @**PURE** */ React.createElement(“div”, { style: { background: CARD, border: “1px solid “ + BOR, borderRadius: “4px”, padding: “10px” } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “8px”, color: MUT, letterSpacing: “2px”, textTransform: “uppercase”, fontFamily: “monospace”, marginBottom: “7px” } }, “Audience”), sel.contentStyle && /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “11px”, color: TXT, lineHeight: “1.6”, marginBottom: “7px” } }, sel.contentStyle), sel.audienceProfile && /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “11px”, color: MUT, lineHeight: “1.6” } }, sel.audienceProfile)), /* @**PURE** */ React.createElement(“div”, { style: { gridColumn: “1/-1”, background: “#18120010”, border: “1px solid #3a2810”, borderRadius: “4px”, padding: “8px 12px”, display: “flex”, justifyContent: “space-between”, alignItems: “center” } }, /* @**PURE** */ React.createElement(“div”, null, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “8px”, color: MUT, fontFamily: “monospace”, letterSpacing: “2px” } }, “NEXT ACTION”), /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “12px”, color: UC[nextAct(sel).urg], marginTop: “2px”, fontWeight: “bold” } }, nextAct(sel).lbl)), /* @**PURE** */ React.createElement(“button”, { onClick: () => setTab(“actions”), style: __spreadProps(__spreadValues({}, pill(true, G)), { padding: “4px 10px” }) }, “Checklist”))), tab === “actions” && /* @**PURE** */ React.createElement(“div”, null, /* @**PURE** */ React.createElement(“div”, { style: { marginBottom: “12px” } }, /* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, justifyContent: “space-between”, fontSize: “10px”, color: MUT, fontFamily: “monospace”, marginBottom: “4px” } }, /* @**PURE** */ React.createElement(“span”, null, “Progress”), /* @**PURE** */ React.createElement(“span”, null, Object.values(sel.actions || {}).filter(Boolean).length, “/”, ACTIONS.length)), /* @**PURE** */ React.createElement(“div”, { style: { height: “3px”, background: BOR, borderRadius: “2px”, overflow: “hidden” } }, /* @**PURE** */ React.createElement(“div”, { style: { height: “100%”, background: G, transition: “width .3s”, width: Object.values(sel.actions || {}).filter(Boolean).length / ACTIONS.length * 100 + “%” } }))), /* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, flexDirection: “column”, gap: “4px” } }, ACTIONS.map((action) => {
+const checked = !!(sel.actions || {})[action.id];
+const na = nextAct(sel);
+const isNext = na.id === action.id;
+return /* @**PURE** */ React.createElement(“div”, { key: action.id, style: { background: checked ? “#10b98108” : isNext ? “#c9943a15” : CARD, border: “1px solid “ + (checked ? “#10b98130” : isNext ? “#c9943a50” : BOR), borderRadius: “3px”, padding: “8px 10px”, display: “flex”, alignItems: “center”, gap: “9px” } }, /* @**PURE** */ React.createElement(
+“div”,
+{
+onClick: () => tickAction(sel.handle, action.id),
+style: { width: “16px”, height: “16px”, borderRadius: “3px”, flexShrink: 0, border: “2px solid “ + (checked ? “#10b981” : isNext ? G : BOR), background: checked ? “#10b981” : “transparent”, cursor: “pointer”, display: “flex”, alignItems: “center”, justifyContent: “center” }
+},
+checked && /* @**PURE** */ React.createElement(“span”, { style: { color: “#000”, fontSize: “10px”, fontWeight: “bold” } }, “\u2713”)
+), /* @**PURE** */ React.createElement(“div”, { style: { flex: 1 } }, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “11px”, color: checked ? MUT : isNext ? G : TXT, textDecoration: checked ? “line-through” : “none” } }, action.label), action.adv && /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “9px”, color: DIM, fontFamily: “monospace”, marginTop: “1px” } }, gs(action.adv).label)), isNext && !checked && /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “9px”, color: G, fontFamily: “monospace”, background: “#c9943a15”, border: “1px solid #c9943a40”, padding: “2px 5px”, borderRadius: “10px” } }, “now”), action.id === “first_contact” && sel.dmDate && checked && /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “9px”, color: DIM, fontFamily: “monospace” } }, sel.dmDate), action.id === “sample_shipped” && sel.sampleDate && checked && /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “9px”, color: DIM, fontFamily: “monospace” } }, sel.sampleDate));
+}))), tab === “dm” && /* @**PURE** */ React.createElement(“div”, null, /* @**PURE** */ React.createElement(“div”, { style: { display: “flex”, gap: “9px”, alignItems: “center”, marginBottom: “11px” } }, /* @**PURE** */ React.createElement(“button”, { onClick: () => genDM(sel), disabled: dmLoad, style: __spreadProps(__spreadValues({}, pill(true, G)), { padding: “7px 16px”, fontSize: “12px” }) }, dmLoad ? “Generating…” : “Generate DMs”), /* @**PURE** */ React.createElement(“span”, { style: { fontSize: “9px”, color: DIM, fontFamily: “monospace” } }, “Opener \xB7 Follow-up \xB7 Sample Pitch”)), dmErr && /* @**PURE** */ React.createElement(“div”, { style: { marginBottom: “9px”, fontSize: “11px”, color: “#ef4444”, fontFamily: “monospace” } }, dmErr), dmText ? /* @**PURE** */ React.createElement(“div”, { style: { background: CARD, border: “1px solid “ + BOR, borderRadius: “4px”, padding: “12px” } }, dmText.split(”\n”).map((line, i) => {
+const isH = /^(OPENER|FOLLOW-UP|SAMPLE PITCH):/.test(line);
+return /* @**PURE** */ React.createElement(“div”, { key: i, style: { color: isH ? G : TXT, fontStyle: isH ? “normal” : “italic”, fontWeight: isH ? “bold” : “normal”, marginTop: isH && i > 0 ? “12px” : “0”, fontFamily: isH ? “monospace” : “inherit”, fontSize: isH ? “8px” : “12px”, letterSpacing: isH ? “1.5px” : “0”, lineHeight: “1.8” } }, line);
+})) : !dmLoad && /* @**PURE** */ React.createElement(“div”, { style: { background: CARD, border: “1px solid “ + BOR, borderRadius: “4px”, padding: “18px”, textAlign: “center”, color: DIM, fontSize: “11px” } }, “Tap Generate to create personalized DMs for “, sel.handle, “.”)), tab === “notes” && /* @**PURE** */ React.createElement(“div”, null, /* @**PURE** */ React.createElement(“div”, { style: { fontSize: “9px”, color: MUT, fontFamily: “monospace”, marginBottom: “6px” } }, “Shared with team \xB7 auto-saved”), /* @**PURE** */ React.createElement(
+“textarea”,
+{
+value: notes,
+onChange: (e) => setNotes(e.target.value),
+onBlur: () => pushUpdate(sel.handle, { notes }),
+placeholder: “Notes for “ + sel.handle + “…\n\n- What did they reply?\n- Personal details for next DM?\n- Which sample angle worked?”,
+style: { width: “100%”, minHeight: “160px”, padding: “10px”, borderRadius: “4px”, resize: “vertical”, lineHeight: “1.7” }
+}
+), /* @**PURE** */ React.createElement(“div”, { style: { marginTop: “7px”, fontSize: “9px”, color: DIM, fontFamily: “monospace” } }, “Added: “, sel.addedDate)))))));
 }
 window.__App = App;
 </script>
+
 <script>
 ReactDOM.render(React.createElement(window.__App), document.getElementById("root"));
 </script>
+
 </body>
 </html>
