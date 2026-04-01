@@ -5,12 +5,12 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>TCC Influencer CRM</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#060504;color:#e4dccb;font-family:Georgia,serif;font-size:13px;height:100vh;overflow:hidden}
+#loading{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:#060504}
+#loading p{color:#c9943a;font-family:monospace;font-size:12px;letter-spacing:2px}
+#loading small{color:#4a3c24;font-family:monospace;font-size:10px}
 ::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-track{background:#080705}
 ::-webkit-scrollbar-thumb{background:#2a2518;border-radius:2px}
@@ -22,7 +22,15 @@ button:disabled{opacity:.4;cursor:not-allowed}
 </style>
 </head>
 <body>
+<div id="loading">
+  <div style="font-size:28px">☕</div>
+  <p>LOADING TCC CRM</p>
+  <small>tcc-crm.vercel.app</small>
+</div>
 <div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
@@ -411,7 +419,15 @@ style: { width: “100%”, minHeight: “160px”, padding: “10px”, borderR
 ), /* @**PURE** */ React.createElement(“div”, { style: { marginTop: “7px”, fontSize: “9px”, color: DIM, fontFamily: “monospace” } }, “Added: “, sel.addedDate)))))));
 }
 window.__App = App;
+window.onload = function() {
+try {
+document.getElementById(“loading”).style.display = “none”;
 ReactDOM.render(React.createElement(window.__App), document.getElementById(“root”));
+} catch(err) {
+document.getElementById(“loading”).innerHTML =
+’<div style="color:#ef4444;font-family:monospace;font-size:11px;padding:20px;text-align:center">Error: ’ + err.message + ‘</div>’;
+}
+};
 </script>
 
 </body>
