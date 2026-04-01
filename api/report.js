@@ -389,6 +389,7 @@ return data;
 
 // ── VERCEL HANDLER ────────────────────────────────────────────────────────
 export default async function handler(req, res) {
+
 try {
 const infs = await fetchInfluencers();
 const { html, dueToday, converting, stalled, total } = buildReport(infs);
