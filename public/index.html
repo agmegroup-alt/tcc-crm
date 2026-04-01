@@ -24,12 +24,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <body>
 <div id="root"></div>
 <script>
-window.__sb = supabase.createClient(
-  "https://zotmzaezodgszcjbfktt.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvdG16YWV6b2Rnc3pjamJma3R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODQ1MzAsImV4cCI6MjA5MDU2MDUzMH0.wGxNInF52zyhwHsDvuWJDRpVrxgDBgCCOVlq0rTHhyE"
-);
-</script>
-<script>
 var __defProp = Object.defineProperty;
 var __defProps = Object.defineProperties;
 var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
@@ -64,6 +58,7 @@ var __objRest = (source, exclude) => {
 const { useState, useEffect, useCallback } = React;
 const SB_URL = "https://zotmzaezodgszcjbfktt.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvdG16YWV6b2Rnc3pjamJma3R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODQ1MzAsImV4cCI6MjA5MDU2MDUzMH0.wGxNInF52zyhwHsDvuWJDRpVrxgDBgCCOVlq0rTHhyE";
+const sb = supabase.createClient(SB_URL, SB_KEY);
 const STAGES = [
   { id: "new", label: "New", color: "#5a5248" },
   { id: "researched", label: "Researched", color: "#6366f1" },
@@ -170,7 +165,6 @@ async function callClaude(content, maxTokens) {
   return d.content && d.content[0] && d.content[0].text || "";
 }
 function App() {
-  const sb = window.__sb;
   const [infs, setInfs] = useState([]);
   const [sel, setSel] = useState(null);
   const [hdl, setHdl] = useState("");
@@ -417,10 +411,7 @@ style: { width: “100%”, minHeight: “160px”, padding: “10px”, borderR
 ), /* @**PURE** */ React.createElement(“div”, { style: { marginTop: “7px”, fontSize: “9px”, color: DIM, fontFamily: “monospace” } }, “Added: “, sel.addedDate)))))));
 }
 window.__App = App;
-</script>
-
-<script>
-ReactDOM.render(React.createElement(window.__App), document.getElementById("root"));
+ReactDOM.render(React.createElement(window.__App), document.getElementById(“root”));
 </script>
 
 </body>
