@@ -1,0 +1,29 @@
+{
+“version”: 2,
+“routes”: [
+{
+“src”: “/api/report”,
+“dest”: “/api/report.js”
+},
+{
+“src”: “/(.*)”,
+“dest”: “/index.html”
+}
+],
+“crons”: [
+{
+“path”: “/api/report”,
+“schedule”: “0 11 * * *”
+}
+],
+“headers”: [
+{
+“source”: “/(.*)”,
+“headers”: [
+{ “key”: “X-Content-Type-Options”, “value”: “nosniff” },
+{ “key”: “X-Frame-Options”,        “value”: “DENY”    },
+{ “key”: “Cache-Control”,          “value”: “no-store” }
+]
+}
+]
+}
