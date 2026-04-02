@@ -8,10 +8,11 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#060504;color:#e4dccb;font-family:Georgia,serif;font-size:13px;height:100vh;overflow:hidden}
-input,textarea{background:#0f0d08;border:1px solid #1e1b12;color:#e4dccb;padding:7px 10px;border-radius:3px;font-family:monospace;font-size:12px;outline:none}
+input,textarea,select{background:#0f0d08;border:1px solid #1e1b12;color:#e4dccb;padding:7px 10px;border-radius:3px;font-family:monospace;font-size:12px;outline:none}
+input:focus,textarea:focus{border-color:#c9943a60!important}
 button{cursor:pointer;font-family:monospace}
 button:disabled{opacity:.4;cursor:not-allowed}
-::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar{width:4px;height:4px}
 ::-webkit-scrollbar-thumb{background:#2a2518;border-radius:2px}
 </style>
 </head>
@@ -22,194 +23,496 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
 <script type="text/babel" data-presets="react">
-const {useState,useEffect,useCallback}=React;
+const {useState,useEffect,useCallback,useRef}=React;
 const SB_URL="https://zotmzaezodgszcjbfktt.supabase.co";
 const SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvdG16YWV6b2Rnc3pjamJma3R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODQ1MzAsImV4cCI6MjA5MDU2MDUzMH0.wGxNInF52zyhwHsDvuWJDRpVrxgDBgCCOVlq0rTHhyE";
-const STAGES=[{id:"new",label:"New",color:"#5a5248"},{id:"researched",label:"Researched",color:"#6366f1"},{id:"dm_sent",label:"DM Sent",color:"#3b82f6"},{id:"replied",label:"Replied",color:"#8b5cf6"},{id:"call_booked",label:"Call Booked",color:"#f59e0b"},{id:"sample_sent",label:"Sample Sent",color:"#f97316"},{id:"converting",label:"Converting",color:"#10b981"},{id:"declined",label:"Declined",color:"#ef4444"},{id:"paused",label:"Paused",color:"#374151"}];
-const ACTIONS=[{id:"first_contact",label:"First DM sent",adv:"dm_sent"},{id:"follow_up_1",label:"Follow-up DM (Day 3)",adv:null},{id:"follow_up_2",label:"Follow-up DM (Week 2)",adv:null},{id:"reply_received",label:"Reply received",adv:"replied"},{id:"sample_offered",label:"Sample kit offered",adv:null},{id:"address_received",label:"Shipping address received",adv:null},{id:"sample_shipped",label:"Sample shipped",adv:"sample_sent"},{id:"feedback_received",label:"Post-sample feedback received",adv:null},{id:"affiliate_agreed",label:"Affiliate terms agreed",adv:null},{id:"link_sent",label:"Affiliate link sent",adv:null},{id:"first_post",label:"First post published",adv:"converting"},{id:"commission_paid",label:"First commission paid",adv:null}];
-const tod=()=>new Date().toISOString().split("T")[0];
-const dAgo=d=>d?Math.floor((Date.now()-new Date(d))/86400000):0;
-const gs=id=>STAGES.find(s=>s.id===id)||STAGES[0];
-const sc=n=>n>=8?"#10b981":n>=6?"#c9943a":n>=4?"#f59e0b":"#ef4444";
-const UC={high:"#ef4444",medium:"#f59e0b",low:"#6b7280",done:"#10b981"};
-function nextAct(inf){
-  const a=inf.actions||{};
-  if(!a.first_contact) return{lbl:"Send first DM",urg:"high",id:"first_contact"};
-  if(!a.follow_up_1){const d=dAgo(inf.dmDate);if(d>=3)return{lbl:"Send Day-3 follow-up",urg:"high",id:"follow_up_1"};return{lbl:`Follow-up in ${3-d}d`,urg:"low",id:"follow_up_1"};}
-  if(!a.follow_up_2){if(dAgo(inf.dmDate)>=14)return{lbl:"Send Week-2 follow-up",urg:"high",id:"follow_up_2"};return{lbl:"Awaiting reply",urg:"low",id:null};}
-  if(!a.reply_received) return{lbl:"Awaiting reply",urg:"low",id:null};
-  if(!a.sample_offered) return{lbl:"Offer sample kit",urg:"high",id:"sample_offered"};
-  if(!a.address_received) return{lbl:"Get shipping address",urg:"medium",id:null};
-  if(!a.sample_shipped) return{lbl:"Ship the sample",urg:"high",id:"sample_shipped"};
-  if(!a.feedback_received) return{lbl:"Request feedback",urg:"medium",id:null};
-  if(!a.affiliate_agreed) return{lbl:"Close affiliate deal",urg:"high",id:null};
-  if(!a.link_sent) return{lbl:"Send affiliate link",urg:"high",id:"link_sent"};
-  if(!a.first_post) return{lbl:"Awaiting first post",urg:"low",id:null};
-  if(!a.commission_paid) return{lbl:"Pay commission",urg:"medium",id:null};
-  return{lbl:"Active ✓",urg:"done",id:null};
+
+const STATUSES=[
+{id:“active”,label:“Active”,color:”#10b981”},
+{id:“converting”,label:“Converting”,color:”#c9943a”},
+{id:“paused”,label:“Paused”,color:”#6b7280”},
+{id:“declined”,label:“Declined”,color:”#ef4444”},
+];
+
+const STAGES=[
+{id:“discovery”,label:“Discovery”,color:”#6366f1”,steps:[
+{id:“s1_1”,label:“Search relevant hashtags (#specialtycoffee, #coffeeaddict, #espresso)”},
+{id:“s1_2”,label:“Verify follower count (5K–500K range)”},
+{id:“s1_3”,label:“Check engagement rate (target >2%)”},
+{id:“s1_4”,label:“Review last 9 posts — niche fit confirmed”},
+{id:“s1_5”,label:“Confirm US-based audience”},
+{id:“s1_6”,label:“Assign fit score and add to CRM”},
+]},
+{id:“warmup”,label:“Warm-Up”,color:”#f59e0b”,steps:[
+{id:“s2_1”,label:“Follow their account”},
+{id:“s2_2”,label:“Like their 3 most recent posts”},
+{id:“s2_3”,label:“Leave a genuine comment on most recent post”},
+{id:“s2_4”,label:“Reply to their Story (Day 1)”},
+{id:“s2_5”,label:“Like 2 more posts (Day 2)”},
+{id:“s2_6”,label:“Comment on a second post (Day 3)”},
+]},
+{id:“outreach”,label:“DM Outreach”,color:”#3b82f6”,steps:[
+{id:“s3_1”,label:“Send Day 1 opener DM (personalized hook)”},
+{id:“s3_2”,label:“Log reply received — YES”},
+{id:“s3_3”,label:“Log reply received — NO (proceed to Day 3)”},
+{id:“s3_4”,label:“Send Day 3 follow-up (different angle)”},
+{id:“s3_5”,label:“Send Day 7 final follow-up (last attempt)”},
+{id:“s3_6”,label:“Schedule intro call (if interested)”},
+{id:“s3_7”,label:“Close on sample kit offer — address requested”},
+]},
+{id:“sample”,label:“Sample Kit”,color:”#f97316”,steps:[
+{id:“s4_1”,label:“Collect full shipping address”},
+{id:“s4_2”,label:“Pack sample kit (3-pack + lot card + note)”},
+{id:“s4_3”,label:“Ship kit — log tracking number”},
+{id:“s4_4”,label:“Send tracking number to influencer”},
+{id:“s4_5”,label:“Confirm delivery (check tracking)”},
+{id:“s4_6”,label:“Follow up for feedback (7 days post-delivery)”},
+]},
+{id:“activation”,label:“Activation”,color:”#8b5cf6”,steps:[
+{id:“s5_1”,label:“Send affiliate link (Sticky Cookie)”},
+{id:“s5_2”,label:“Send content brief (angles, key messages, don’ts)”},
+{id:“s5_3”,label:“Agree on post format and publish date”},
+{id:“s5_4”,label:“Confirm post is live”},
+{id:“s5_5”,label:“QC check — correct tag, affiliate link, disclosure”},
+{id:“s5_6”,label:“Screenshot and archive post”},
+{id:“s5_7”,label:“Send thank you message + commission details”},
+]},
+{id:“conversion”,label:“Conversion”,color:”#10b981”,steps:[
+{id:“s6_1”,label:“Confirm first sale tracked in affiliate dashboard”},
+{id:“s6_2”,label:“Pay first commission — confirm received”},
+{id:“s6_3”,label:“Send performance report (clicks, sales, earnings)”},
+{id:“s6_4”,label:“Re-engagement DM at 30 days”},
+{id:“s6_5”,label:“Offer exclusive deal or code for their audience”},
+{id:“s6_6”,label:“Lock in long-term partnership terms”},
+]},
+];
+
+const TOTAL_STEPS=STAGES.reduce((a,s)=>a+s.steps.length,0);
+const tod=()=>new Date().toISOString().split(“T”)[0];
+const sc=n=>n>=8?”#10b981”:n>=6?”#c9943a”:n>=4?”#f59e0b”:”#ef4444”;
+
+function stageProgress(inf,stageId){
+const stage=STAGES.find(s=>s.id===stageId);
+if(!stage)return 0;
+const done=stage.steps.filter(st=>(inf.steps||{})[st.id]).length;
+return Math.round(done/stage.steps.length*100);
 }
-function exJSON(t){if(!t)return null;let s=t.replace(/```json\s*/gi,"").replace(/```\s*/g,"").trim();try{return JSON.parse(s)}catch(e){}const i=s.indexOf("{"),j=s.lastIndexOf("}");if(i!==-1&&j>i){try{return JSON.parse(s.slice(i,j+1))}catch(e){}}return null;}
-function mkFallback(){return{inferredName:"Unknown",estimatedFollowers:"Unknown",estimatedEngagement:"Unknown",inferredNiche:"Coffee / Lifestyle",inferredLocation:"United States",contentStyle:"Visit their profile to assess.",tccFitScore:5,tccFitReason:"Review their content to assess TCC fit.",audienceProfile:"Review profile.",bestAngle:"Farm-to-cup freshness — processed and roasted for perfection, air-shipped to your door.",redFlags:"None",suggestedTier:"T1",tierLabel:"Specialty Coffee",outreachPriority:"Medium",recommendedFirstAction:"Visit their Instagram and review last 9 posts.",dmTiming:"Mon-Wed, 9-11am or 7-9pm",sampleStrategy:"Lead with the double-freshness angle — no US brand does both.",notes:""};}
+function overallProgress(inf){
+const done=Object.values(inf.steps||{}).filter(Boolean).length;
+return Math.round(done/TOTAL_STEPS*100);
+}
+function currentStage(inf){
+for(let i=STAGES.length-1;i>=0;i–){
+const p=stageProgress(inf,STAGES[i].id);
+if(p>0)return STAGES[i];
+}
+return STAGES[0];
+}
+
 async function callClaude(content,maxTokens=1200){
-  const r=await fetch("/api/claude",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:maxTokens,messages:[{role:"user",content}]})});
-  if(!r.ok){const e=await r.text().catch(()=>r.statusText);throw new Error("API "+r.status+": "+e.slice(0,200));}
-  const d=await r.json();return(d.content&&d.content[0]&&d.content[0].text)||"";
+const r=await fetch(”/api/claude”,{method:“POST”,headers:{“Content-Type”:“application/json”},body:JSON.stringify({model:“claude-sonnet-4-20250514”,max_tokens:maxTokens,messages:[{role:“user”,content}]})});
+if(!r.ok){const e=await r.text().catch(()=>r.statusText);throw new Error(“API “+r.status+”: “+e.slice(0,200));}
+const d=await r.json();return(d.content&&d.content[0]&&d.content[0].text)||””;
 }
-function App(){
-  const sb=supabase.createClient(SB_URL,SB_KEY);
-  const[infs,setInfs]=useState([]);
-  const[sel,setSel]=useState(null);
-  const[hdl,setHdl]=useState("");
-  const[loading,setLoading]=useState(false);
-  const[loadErr,setLoadErr]=useState("");
-  const[syncing,setSyncing]=useState(true);
-  const[dmText,setDmText]=useState("");
-  const[dmLoad,setDmLoad]=useState(false);
-  const[dmErr,setDmErr]=useState("");
-  const[tab,setTab]=useState("profile");
-  const[fStg,setFStg]=useState("all");
-  const[srch,setSrch]=useState("");
-  const[showAdd,setShowAdd]=useState(false);
-  const[notes,setNotes]=useState("");
-  const[lastSync,setLastSync]=useState(null);
-  async function dbLoad(){const res=await sb.from("influencers").select("*").order("id",{ascending:false});if(res.error)throw res.error;return(res.data||[]).map(r=>({...r.data,handle:r.handle}));}
-  async function dbSave(inf){const{handle,...data}=inf;await sb.from("influencers").upsert({handle,data,updated_at:new Date().toISOString()},{onConflict:"handle"});}
-  async function dbDel(handle){await sb.from("influencers").delete().eq("handle",handle);}
-  useEffect(()=>{setSyncing(true);dbLoad().then(rows=>{setInfs(rows);setSyncing(false);setLastSync(new Date());}).catch(()=>setSyncing(false));},[]);
-  useEffect(()=>{const ch=sb.channel("crm").on("postgres_changes",{event:"*",schema:"public",table:"influencers"},()=>{dbLoad().then(rows=>{setInfs(rows);setLastSync(new Date());});}).subscribe();return()=>sb.removeChannel(ch);},[]);
-  useEffect(()=>{if(sel){const f=infs.find(i=>i.handle===sel.handle);if(f)setSel(f);}},[infs]);
-  const pushUpdate=useCallback((handle,patch)=>{setInfs(p=>p.map(i=>{if(i.handle!==handle)return i;const u={...i,...patch};dbSave(u);return u;}));},[]);
-  const tickAction=useCallback((handle,actionId)=>{setInfs(p=>p.map(inf=>{if(inf.handle!==handle)return inf;const actions={...inf.actions||{}};const was=!!actions[actionId];actions[actionId]=!was;const patch={actions};if(actionId==="first_contact"&&!was)patch.dmDate=tod();if(actionId==="sample_shipped"&&!was)patch.sampleDate=tod();if(actionId==="first_post"&&!was)patch.firstPostDate=tod();const act=ACTIONS.find(a=>a.id===actionId);if(act?.adv&&!was)patch.stage=act.adv;const u={...inf,...patch};dbSave(u);return u;}));},[]);
-  async function buildProfile(){
-    const h=hdl.trim().replace(/^@/,"").trim();if(!h)return;
-    setLoading(true);setLoadErr("");
-    let profile=null;
-    try{
-      const raw=await callClaude("Analyze Instagram handle @"+h+" for The Coffee Code (TCC).\nTCC: Alejandro sources specialty coffee cherry near Canon de Taparto, Antioquia, Colombia. He processes it at his own specialty wet mill, measuring every variable and aiming for perfection in every lot. After the ideal reposo period, he roasts at the perfect moment. Bags arrive 7-10 days after roasting by plane. Double freshness: optimal post-harvest conditions AND post-roast freshness together. Every bag stamped with harvest + roast date.\n\nReturn ONLY JSON, start with { end with }:\n{\"inferredName\":\"name or Unknown\",\"estimatedFollowers\":\"range\",\"estimatedEngagement\":\"range\",\"inferredNiche\":\"niche\",\"inferredLocation\":\"US location\",\"contentStyle\":\"2 sentences\",\"tccFitScore\":7,\"tccFitReason\":\"2 sentences\",\"audienceProfile\":\"1 sentence\",\"bestAngle\":\"best DM hook\",\"redFlags\":\"or None\",\"suggestedTier\":\"T1\",\"tierLabel\":\"Specialty Coffee\",\"outreachPriority\":\"High\",\"recommendedFirstAction\":\"1 action\",\"dmTiming\":\"best time\",\"sampleStrategy\":\"angle\",\"notes\":\"intel\"}");
-      profile=exJSON(raw);if(!profile)throw new Error("Parse failed");
-    }catch(e){setLoadErr(e.message);profile=mkFallback();}
-    if(typeof profile.tccFitScore!=="number")profile.tccFitScore=parseInt(profile.tccFitScore)||5;
-    const newInf={handle:"@"+h,stage:"researched",actions:{},dmDate:null,sampleDate:null,firstPostDate:null,addedDate:tod(),notes:"",...profile};
-    await dbSave(newInf);const fresh=await dbLoad();setInfs(fresh);
-    const saved=fresh.find(i=>i.handle==="@"+h)||newInf;
-    setSel(saved);setHdl("");setShowAdd(false);setTab("profile");setNotes("");setDmText("");setLoading(false);
-  }
-  async function genDM(inf){
-    setDmLoad(true);setDmText("");setDmErr("");
-    try{
-      const t=await callClaude("Write 3 outreach DMs for The Coffee Code (TCC).\nTCC: Alejandro sources specialty cherry near Canon de Taparto, Colombia. Processes at his own wet mill, measuring every variable, aiming for perfection every lot. Roasts after ideal reposo period. Arrives 7-10 days after roasting by plane. Double freshness: post-harvest + post-roast. No US brand does both. Harvest + roast date on every bag.\n\nCreator: "+inf.handle+" | Niche: "+(inf.inferredNiche||"coffee")+" | Angle: "+(inf.bestAngle||"double freshness")+"\n\nNo emoji. No hashtags. Peer-to-peer. Line 1 specific to their niche.\n\nOPENER:\n[Cold DM. 3 sentences. Specific hook. Yes/no about free sample kit.]\n\nFOLLOW-UP:\n[Day 3 no reply. 2 sentences. Different angle.]\n\nSAMPLE PITCH:\n[After reply. 3 sentences. Offer free sample.]",800);
-      setDmText(t);
-    }catch(e){setDmErr(e.message);}
-    setDmLoad(false);
-  }
-  const dueToday=infs.filter(i=>nextAct(i).urg==="high");
-  const filtered=infs.filter(i=>{const q=srch.toLowerCase();return(!q||i.handle.toLowerCase().includes(q)||(i.inferredNiche||"").toLowerCase().includes(q))&&(fStg==="all"||i.stage===fStg);});
-  const cnt=id=>infs.filter(i=>i.stage===id).length;
-  const G="#c9943a",BG="#060504",PAN="#0c0b08",CARD="#100f0b",BOR="#1e1b12",DIM="#3a3020",MUT="#7a6840",TXT="#e4dccb";
-  const pill=(on,col=G)=>({padding:"3px 9px",background:on?col+"18":"transparent",border:"1px solid "+(on?col:BOR),color:on?col:MUT,fontFamily:"monospace",fontSize:"10px",borderRadius:"2px",cursor:"pointer"});
-  return(
-<div style={{height:"100vh",background:BG,color:TXT,fontFamily:"Georgia,serif",fontSize:"13px",display:"flex",flexDirection:"column",overflow:"hidden"}}>
-  <div style={{background:PAN,borderBottom:"1px solid "+BOR,padding:"10px 16px",display:"flex",alignItems:"center",gap:"12px",flexShrink:0}}>
-    <div><div style={{fontSize:"8px",letterSpacing:"3px",color:MUT,fontFamily:"monospace",textTransform:"uppercase"}}>THE COFFEE CODE</div><div style={{fontSize:"15px",fontWeight:"bold",color:G}}>Influencer CRM</div></div>
-    <div style={{flex:1}}/>
-    <span style={{fontSize:"9px",fontFamily:"monospace",color:syncing?"#f59e0b":"#10b981"}}>{syncing?"syncing...":"● live"}{lastSync&&!syncing&&<span style={{color:DIM,marginLeft:5}}>{lastSync.toLocaleTimeString()}</span>}</span>
-    {[["Total",infs.length,TXT],["Due",dueToday.length,dueToday.length>0?"#ef4444":MUT],["Active",cnt("converting"),"#10b981"]].map(([l,v,c])=>(
-      <div key={l} style={{textAlign:"center",minWidth:"34px"}}><div style={{fontSize:"15px",fontWeight:"bold",fontFamily:"monospace",color:c,lineHeight:1}}>{v}</div><div style={{fontSize:"8px",color:DIM,fontFamily:"monospace"}}>{l}</div></div>
-    ))}
-    <button onClick={()=>{setShowAdd(v=>!v);setLoadErr("");}} style={{...pill(showAdd),padding:"6px 12px",fontSize:"11px"}}>{showAdd?"✕":"+ Add"}</button>
-  </div>
-  {showAdd&&<div style={{background:"#0f0d07",borderBottom:"1px solid "+BOR,padding:"10px 16px"}}>
-    <div style={{fontSize:"10px",color:MUT,fontFamily:"monospace",marginBottom:"7px"}}>Enter any Instagram handle — AI builds the full profile</div>
-    <div style={{display:"flex",gap:"8px",flexWrap:"wrap",alignItems:"center"}}>
-      <input value={hdl} onChange={e=>setHdl(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!loading&&hdl.trim()&&buildProfile()} placeholder="tannercolsoncoffee" style={{flex:1,minWidth:"160px"}} autoFocus/>
-      <button onClick={buildProfile} disabled={loading||!hdl.trim()} style={{...pill(true,G),padding:"7px 14px",fontSize:"12px"}}>{loading?"Analyzing...":"Build Profile"}</button>
-      {loading&&<span style={{fontSize:"11px",color:G,fontFamily:"monospace"}}>AI working...</span>}
-    </div>
-    {loadErr&&<div style={{marginTop:"7px",fontSize:"11px",color:"#f59e0b",background:"#f59e0b10",border:"1px solid #f59e0b30",padding:"6px 9px",borderRadius:"3px",fontFamily:"monospace"}}>{loadErr}</div>}
-  </div>}
-  {dueToday.length>0&&<div style={{background:"#140a00",borderBottom:"1px solid #3a1800",padding:"7px 16px"}}>
-    <div style={{fontSize:"9px",color:"#f97316",letterSpacing:"2px",fontFamily:"monospace",marginBottom:"4px"}}>TODAY — {dueToday.length} NEED ACTION</div>
-    <div style={{display:"flex",gap:"5px",flexWrap:"wrap"}}>
-      {dueToday.map(inf=>{const na=nextAct(inf);return<button key={inf.handle} onClick={()=>{setSel(inf);setTab("actions");setNotes(inf.notes||"");}} style={{background:"#1e0e0050",border:"1px solid #3a2010",color:TXT,padding:"3px 8px",borderRadius:"3px",fontSize:"11px"}}><span style={{color:G}}>{inf.handle}</span><span style={{color:"#f97316",marginLeft:6}}>{na.lbl}</span></button>;})}
-    </div>
-  </div>}
-  <div style={{display:"flex",flex:1,overflow:"hidden",minHeight:0}}>
-    <div style={{width:"235px",borderRight:"1px solid "+BOR,display:"flex",flexDirection:"column",flexShrink:0}}>
-      <div style={{padding:"8px 10px",borderBottom:"1px solid "+DIM,flexShrink:0}}>
-        <input value={srch} onChange={e=>setSrch(e.target.value)} placeholder="Search..." style={{width:"100%",marginBottom:"6px"}}/>
-        <div style={{display:"flex",gap:"3px",flexWrap:"wrap"}}>
-          <button onClick={()=>setFStg("all")} style={{...pill(fStg==="all"),fontSize:"9px"}}>All {infs.length}</button>
-          {STAGES.filter(s=>cnt(s.id)>0).map(s=><button key={s.id} onClick={()=>setFStg(s.id)} style={{...pill(fStg===s.id,s.color),fontSize:"9px"}}>{s.label} {cnt(s.id)}</button>)}
+
+function exJSON(t){if(!t)return null;let s=t.replace(/`json\s*/gi,"").replace(/`\s*/g,””).trim();try{return JSON.parse(s)}catch(e){}const i=s.indexOf(”{”),j=s.lastIndexOf(”}”);if(i!==-1&&j>i){try{return JSON.parse(s.slice(i,j+1))}catch(e){}}return null;}
+
+// Colors
+const G=”#c9943a”,BG=”#060504”,PAN=”#0c0b08”,CARD=”#100f0b”,BOR=”#1e1b12”,DIM=”#3a3020”,MUT=”#7a6840”,TXT=”#e4dccb”;
+const pill=(on,col=G,sm=false)=>({padding:sm?“2px 7px”:“3px 9px”,background:on?col+“18”:“transparent”,border:“1px solid “+(on?col:BOR),color:on?col:MUT,fontFamily:“monospace”,fontSize:sm?“9px”:“10px”,borderRadius:“2px”,cursor:“pointer”});
+const btn=(col=G)=>({background:col+“18”,border:“1px solid “+col+“50”,color:col,fontFamily:“monospace”,fontSize:“11px”,padding:“6px 14px”,borderRadius:“3px”,cursor:“pointer”});
+
+function ProgressBar({pct,color=G,height=4,style={}}){
+return <div style={{height,background:BOR,borderRadius:“2px”,overflow:“hidden”,…style}}>
+<div style={{height:“100%”,width:pct+”%”,background:color,transition:“width .3s”,borderRadius:“2px”}}/>
+
+  </div>;
+}
+
+function StageSection({inf,stage,onToggle,dmText,onGenDM,dmLoading,dmErr}){
+const[open,setOpen]=useState(false);
+const pct=stageProgress(inf,stage.id);
+const done=stage.steps.filter(st=>(inf.steps||{})[st.id]).length;
+return(
+
+  <div style={{border:"1px solid "+BOR,borderRadius:"4px",marginBottom:"6px",overflow:"hidden"}}>
+    <div onClick={()=>setOpen(v=>!v)} style={{padding:"10px 12px",background:PAN,cursor:"pointer",display:"flex",alignItems:"center",gap:"10px"}}>
+      <div style={{width:"8px",height:"8px",borderRadius:"50%",background:stage.color,flexShrink:0}}/>
+      <div style={{flex:1}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"4px"}}>
+          <span style={{fontSize:"11px",fontWeight:"bold",color:pct===100?stage.color:TXT}}>{stage.label}</span>
+          <span style={{fontSize:"9px",fontFamily:"monospace",color:pct===100?stage.color:MUT}}>{done}/{stage.steps.length} {pct===100?"✓":""}</span>
         </div>
+        <ProgressBar pct={pct} color={stage.color} height={3}/>
       </div>
-      <div style={{flex:1,overflowY:"auto"}}>
-        {filtered.length===0&&<div style={{padding:"28px 12px",textAlign:"center",color:DIM,fontSize:"11px",lineHeight:2.2}}><div style={{fontSize:"22px",opacity:.12,marginBottom:"6px"}}>☕</div>{infs.length===0?"No contacts yet.\nTap + Add to start.":"No results."}</div>}
-        {filtered.map(inf=>{const stg=gs(inf.stage);const na=nextAct(inf);const isSel=sel?.handle===inf.handle;return(
-          <div key={inf.handle} onClick={()=>{setSel(inf);setNotes(inf.notes||"");setTab("profile");setDmText("");setDmErr("");}} style={{padding:"9px 11px",borderBottom:"1px solid "+DIM,cursor:"pointer",background:isSel?"#161108":"transparent",borderLeft:isSel?"3px solid "+G:"3px solid transparent"}}>
-            <div style={{display:"flex",justifyContent:"space-between",marginBottom:"2px"}}><div style={{color:G,fontSize:"12px",fontWeight:"bold",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"138px"}}>{inf.handle}</div><div style={{fontSize:"11px",fontFamily:"monospace",color:sc(inf.tccFitScore||0),fontWeight:"bold"}}>{inf.tccFitScore||"?"}/10</div></div>
-            <div style={{fontSize:"10px",color:MUT,marginBottom:"4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inf.inferredNiche||"—"}</div>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:"9px",background:stg.color+"20",color:stg.color,border:"1px solid "+stg.color+"40",padding:"1px 5px",borderRadius:"10px",fontFamily:"monospace"}}>{stg.label}</span>{na.urg==="high"&&<span style={{fontSize:"9px",color:"#ef4444"}}>!</span>}</div>
-          </div>);})}
-      </div>
+      <span style={{color:MUT,fontSize:"10px",fontFamily:"monospace"}}>{open?"▲":"▼"}</span>
     </div>
-    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",minWidth:0}}>
-      {!sel?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:"10px",color:DIM}}>
-        <div style={{fontSize:"32px",opacity:.1}}>☕</div>
-        <div style={{fontFamily:"monospace",fontSize:"11px",textAlign:"center",lineHeight:2}}>Add a handle to get started.<br/><span style={{color:"#10b981",fontSize:"10px"}}>Changes sync live with your team.</span></div>
-        <button onClick={()=>setShowAdd(true)} style={{...pill(true,G),padding:"7px 16px",fontSize:"12px"}}>+ Add Handle</button>
-      </div>:<React.Fragment>
-        <div style={{background:PAN,borderBottom:"1px solid "+BOR,padding:"10px 14px",flexShrink:0}}>
-          <div style={{display:"flex",alignItems:"flex-start",justifyContent:"space-between",marginBottom:"7px"}}>
-            <div><div style={{fontSize:"17px",fontWeight:"bold",color:G}}>{sel.handle}</div><div style={{fontSize:"10px",color:MUT,marginTop:"1px"}}>{sel.inferredName&&sel.inferredName!=="Unknown"?sel.inferredName+" · ":""}{sel.inferredLocation} · {sel.estimatedFollowers}</div></div>
-            <div style={{display:"flex",gap:"7px",alignItems:"center"}}>
-              <div style={{textAlign:"center",background:sc(sel.tccFitScore)+"18",border:"1px solid "+sc(sel.tccFitScore)+"40",padding:"4px 9px",borderRadius:"3px"}}><div style={{fontSize:"15px",fontWeight:"bold",fontFamily:"monospace",color:sc(sel.tccFitScore),lineHeight:1}}>{sel.tccFitScore||"?"}/10</div><div style={{fontSize:"7px",color:DIM}}>FIT</div></div>
-              <button onClick={()=>{dbDel(sel.handle);setInfs(p=>p.filter(i=>i.handle!==sel.handle));setSel(null);}} style={{...pill(false),color:"#ef444450",borderColor:"#ef444430",fontSize:"9px",padding:"3px 7px"}}>✕</button>
-            </div>
+    {open&&<div style={{padding:"10px 12px",background:CARD}}>
+      {stage.steps.map(step=>{
+        const checked=!!(inf.steps||{})[step.id];
+        return(
+        <div key={step.id} onClick={()=>onToggle(step.id)} style={{display:"flex",alignItems:"flex-start",gap:"9px",marginBottom:"7px",cursor:"pointer"}}>
+          <div style={{width:"15px",height:"15px",borderRadius:"3px",flexShrink:0,marginTop:"1px",border:"2px solid "+(checked?stage.color:BOR),background:checked?stage.color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            {checked&&<span style={{color:"#000",fontSize:"9px",fontWeight:"bold"}}>✓</span>}
           </div>
-          <div style={{display:"flex",gap:"3px",flexWrap:"wrap"}}>{STAGES.map(s=><button key={s.id} onClick={()=>pushUpdate(sel.handle,{stage:s.id})} style={{...pill(sel.stage===s.id,s.color),fontSize:"8px",padding:"2px 6px"}}>{s.label}</button>)}</div>
+          <span style={{fontSize:"11px",color:checked?MUT:TXT,textDecoration:checked?"line-through":"none",lineHeight:"1.5"}}>{step.label}</span>
+        </div>);
+      })}
+      {stage.id==="outreach"&&<div style={{marginTop:"10px",borderTop:"1px solid "+BOR,paddingTop:"10px"}}>
+        <button onClick={onGenDM} disabled={dmLoading} style={{...btn(G),marginBottom:"8px"}}>{dmLoading?"Generating...":"Generate DMs for this influencer"}</button>
+        {dmErr&&<div style={{fontSize:"10px",color:"#ef4444",marginBottom:"6px",fontFamily:"monospace"}}>{dmErr}</div>}
+        {dmText&&<div style={{background:PAN,border:"1px solid "+BOR,borderRadius:"3px",padding:"10px",fontSize:"11px"}}>
+          {dmText.split("\n").map((line,i)=>{
+            const isH=/^(OPENER|FOLLOW-UP|FINAL FOLLOW-UP|DAY 1|DAY 3|DAY 7):/.test(line);
+            return <div key={i} style={{color:isH?G:TXT,fontStyle:isH?"normal":"italic",fontWeight:isH?"bold":"normal",marginTop:(isH&&i>0)?"10px":"0",fontFamily:isH?"monospace":"inherit",fontSize:isH?"8px":"11px",letterSpacing:isH?"1.5px":"0",lineHeight:"1.75"}}>{line}</div>;
+          })}
+        </div>}
+      </div>}
+    </div>}
+  </div>);
+}
+
+function InfluencerView({inf,onUpdate,onDelete}){
+const[dmText,setDmText]=useState(””);
+const[dmLoading,setDmLoading]=useState(false);
+const[dmErr,setDmErr]=useState(””);
+const[tab,setTab]=useState(“pipeline”);
+const[notes,setNotes]=useState(inf.notes||””);
+
+const toggleStep=useCallback((stepId)=>{
+const steps={…(inf.steps||{})};
+steps[stepId]=!steps[stepId];
+onUpdate({steps});
+},[inf,onUpdate]);
+
+async function genDM(){
+setDmLoading(true);setDmText(””);setDmErr(””);
+try{
+const t=await callClaude(
+“Write 3 outreach DMs for The Coffee Code (TCC).\n”+
+“TCC: Alejandro sources specialty cherry near Canon de Taparto, Colombia. Processes at his own wet mill, measuring every variable, aiming for perfection every lot. Roasts after ideal reposo. Arrives 7-10 days after roasting by plane. Double freshness: post-harvest + post-roast. No US brand does both. Harvest + roast date on every bag.\n\n”+
+“Influencer: “+(inf.name||inf.handle)+” (@”+(inf.handle||“unknown”)+”) | Niche: “+(inf.niche||“coffee/lifestyle”)+”\n\n”+
+“No emoji. No hashtags. Peer-to-peer. First line specific to their content.\n\n”+
+“DAY 1:\n[Opener. 3 sentences. Specific hook. Yes/no about free sample kit.]\n\n”+
+“DAY 3:\n[No reply yet. 2 sentences. Fresh angle. Light urgency.]\n\n”+
+“DAY 7:\n[Final attempt. 2 sentences. Scarcity. Close.]\n”
+,900);
+setDmText(t);
+}catch(e){setDmErr(e.message);}
+setDmLoading(false);
+}
+
+const overall=overallProgress(inf);
+const stg=currentStage(inf);
+
+return(
+
+  <div style={{display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+    {/* Header */}
+    <div style={{background:PAN,borderBottom:"1px solid "+BOR,padding:"10px 14px",flexShrink:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"8px"}}>
+        <div>
+          <div style={{fontSize:"16px",fontWeight:"bold",color:G}}>@{inf.handle||"—"}</div>
+          {inf.name&&<div style={{fontSize:"10px",color:MUT,marginTop:"1px"}}>{inf.name}</div>}
         </div>
-        <div style={{background:PAN,borderBottom:"1px solid "+BOR,display:"flex",paddingLeft:"10px",flexShrink:0}}>
-          {[["profile","Profile"],["actions","Checklist"],["dm","DM"],["notes","Notes"]].map(([id,label])=><button key={id} onClick={()=>setTab(id)} style={{padding:"7px 12px",background:"transparent",border:"none",borderBottom:tab===id?"2px solid "+G:"2px solid transparent",color:tab===id?G:MUT,fontSize:"11px"}}>{label}</button>)}
+        <div style={{display:"flex",gap:"6px",alignItems:"center"}}>
+          {STATUSES.map(s=><button key={s.id} onClick={()=>onUpdate({status:s.id})} style={{...pill(inf.status===s.id,s.color,true),padding:"3px 8px"}}>{s.label}</button>)}
+          <button onClick={onDelete} style={{...pill(false),color:"#ef444450",borderColor:"#ef444430",fontSize:"9px",padding:"2px 7px"}}>✕</button>
         </div>
-        <div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
-          {tab==="profile"&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"9px"}}>
-            <div style={{background:CARD,border:"1px solid "+BOR,borderRadius:"4px",padding:"10px"}}><div style={{fontSize:"8px",color:MUT,letterSpacing:"2px",textTransform:"uppercase",fontFamily:"monospace",marginBottom:"7px"}}>Profile</div>{[["Niche",sel.inferredNiche],["Tier",sel.suggestedTier],["Followers",sel.estimatedFollowers],["Engagement",sel.estimatedEngagement],["Location",sel.inferredLocation],["Priority",sel.outreachPriority]].filter(([,v])=>v&&v!=="Unknown").map(([l,v])=><div key={l} style={{display:"flex",gap:"7px",marginBottom:"5px",fontSize:"11px"}}><span style={{color:DIM,fontFamily:"monospace",minWidth:"72px",flexShrink:0}}>{l}</span><span style={{color:TXT}}>{v}</span></div>)}</div>
-            <div style={{background:CARD,border:"1px solid "+BOR,borderRadius:"4px",padding:"10px"}}><div style={{fontSize:"8px",color:MUT,letterSpacing:"2px",textTransform:"uppercase",fontFamily:"monospace",marginBottom:"7px"}}>TCC Fit</div><div style={{fontSize:"11px",color:TXT,lineHeight:"1.7",marginBottom:"7px"}}>{sel.tccFitReason}</div>{sel.redFlags&&sel.redFlags!=="None"&&<div style={{fontSize:"10px",color:"#ef4444",background:"#ef444410",border:"1px solid #ef444430",padding:"4px 7px",borderRadius:"3px"}}>{sel.redFlags}</div>}</div>
-            <div style={{background:CARD,border:"1px solid "+BOR,borderRadius:"4px",padding:"10px"}}><div style={{fontSize:"8px",color:MUT,letterSpacing:"2px",textTransform:"uppercase",fontFamily:"monospace",marginBottom:"7px"}}>Strategy</div>{[["Best Angle",sel.bestAngle],["DM Timing",sel.dmTiming],["Sample",sel.sampleStrategy],["Action",sel.recommendedFirstAction]].filter(([,v])=>v).map(([l,v])=><div key={l} style={{marginBottom:"7px"}}><div style={{fontSize:"8px",color:MUT,fontFamily:"monospace",marginBottom:"2px"}}>{l.toUpperCase()}</div><div style={{fontSize:"11px",color:TXT,lineHeight:"1.5"}}>{v}</div></div>)}</div>
-            <div style={{background:CARD,border:"1px solid "+BOR,borderRadius:"4px",padding:"10px"}}><div style={{fontSize:"8px",color:MUT,letterSpacing:"2px",textTransform:"uppercase",fontFamily:"monospace",marginBottom:"7px"}}>Audience</div>{sel.contentStyle&&<div style={{fontSize:"11px",color:TXT,lineHeight:"1.6",marginBottom:"7px"}}>{sel.contentStyle}</div>}{sel.audienceProfile&&<div style={{fontSize:"11px",color:MUT,lineHeight:"1.6"}}>{sel.audienceProfile}</div>}</div>
-            <div style={{gridColumn:"1/-1",background:"#18120010",border:"1px solid #3a2810",borderRadius:"4px",padding:"8px 12px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><div style={{fontSize:"8px",color:MUT,fontFamily:"monospace",letterSpacing:"2px"}}>NEXT ACTION</div><div style={{fontSize:"12px",color:UC[nextAct(sel).urg],marginTop:"2px",fontWeight:"bold"}}>{nextAct(sel).lbl}</div></div><button onClick={()=>setTab("actions")} style={{...pill(true,G),padding:"4px 10px"}}>Checklist</button></div>
-          </div>}
-          {tab==="actions"&&<div>
-            <div style={{marginBottom:"12px"}}><div style={{display:"flex",justifyContent:"space-between",fontSize:"10px",color:MUT,fontFamily:"monospace",marginBottom:"4px"}}><span>Progress</span><span>{Object.values(sel.actions||{}).filter(Boolean).length}/{ACTIONS.length}</span></div><div style={{height:"3px",background:BOR,borderRadius:"2px",overflow:"hidden"}}><div style={{height:"100%",background:G,transition:"width .3s",width:(Object.values(sel.actions||{}).filter(Boolean).length/ACTIONS.length*100)+"%"}}/></div></div>
-            <div style={{display:"flex",flexDirection:"column",gap:"4px"}}>
-              {ACTIONS.map(action=>{const checked=!!(sel.actions||{})[action.id];const na=nextAct(sel);const isNext=na.id===action.id;return(
-                <div key={action.id} style={{background:checked?"#10b98108":isNext?"#c9943a15":CARD,border:"1px solid "+(checked?"#10b98130":isNext?"#c9943a50":BOR),borderRadius:"3px",padding:"8px 10px",display:"flex",alignItems:"center",gap:"9px"}}>
-                  <div onClick={()=>tickAction(sel.handle,action.id)} style={{width:"16px",height:"16px",borderRadius:"3px",flexShrink:0,border:"2px solid "+(checked?"#10b981":isNext?G:BOR),background:checked?"#10b981":"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>{checked&&<span style={{color:"#000",fontSize:"10px",fontWeight:"bold"}}>✓</span>}</div>
-                  <div style={{flex:1}}><div style={{fontSize:"11px",color:checked?MUT:isNext?G:TXT,textDecoration:checked?"line-through":"none"}}>{action.label}</div>{action.adv&&<div style={{fontSize:"9px",color:DIM,fontFamily:"monospace",marginTop:"1px"}}>{gs(action.adv).label}</div>}</div>
-                  {isNext&&!checked&&<div style={{fontSize:"9px",color:G,fontFamily:"monospace",background:"#c9943a15",border:"1px solid #c9943a40",padding:"2px 5px",borderRadius:"10px"}}>now</div>}
-                  {action.id==="first_contact"&&sel.dmDate&&checked&&<div style={{fontSize:"9px",color:DIM,fontFamily:"monospace"}}>{sel.dmDate}</div>}
-                  {action.id==="sample_shipped"&&sel.sampleDate&&checked&&<div style={{fontSize:"9px",color:DIM,fontFamily:"monospace"}}>{sel.sampleDate}</div>}
-                </div>);})}
-            </div>
-          </div>}
-          {tab==="dm"&&<div>
-            <div style={{display:"flex",gap:"9px",alignItems:"center",marginBottom:"11px"}}><button onClick={()=>genDM(sel)} disabled={dmLoad} style={{...pill(true,G),padding:"7px 16px",fontSize:"12px"}}>{dmLoad?"Generating...":"Generate DMs"}</button><span style={{fontSize:"9px",color:DIM,fontFamily:"monospace"}}>Opener · Follow-up · Sample Pitch</span></div>
-            {dmErr&&<div style={{marginBottom:"9px",fontSize:"11px",color:"#ef4444",fontFamily:"monospace"}}>{dmErr}</div>}
-            {dmText?<div style={{background:CARD,border:"1px solid "+BOR,borderRadius:"4px",padding:"12px"}}>{dmText.split("\n").map((line,i)=>{const isH=/^(OPENER|FOLLOW-UP|SAMPLE PITCH):/.test(line);return<div key={i} style={{color:isH?G:TXT,fontStyle:isH?"normal":"italic",fontWeight:isH?"bold":"normal",marginTop:(isH&&i>0)?"12px":"0",fontFamily:isH?"monospace":"inherit",fontSize:isH?"8px":"12px",letterSpacing:isH?"1.5px":"0",lineHeight:"1.8"}}>{line}</div>;})}</div>
-            :<div style={{background:CARD,border:"1px solid "+BOR,borderRadius:"4px",padding:"18px",textAlign:"center",color:DIM,fontSize:"11px"}}>Tap Generate to create personalized DMs for {sel.handle}.</div>}
-          </div>}
-          {tab==="notes"&&<div>
-            <div style={{fontSize:"9px",color:MUT,fontFamily:"monospace",marginBottom:"6px"}}>Shared with team · auto-saved</div>
-            <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={()=>pushUpdate(sel.handle,{notes})} placeholder={"Notes for "+sel.handle+"...\n\n- What did they reply?\n- Personal details for next DM?\n- Which sample angle worked?"} style={{width:"100%",minHeight:"160px",padding:"10px",borderRadius:"4px",resize:"vertical",lineHeight:"1.7"}}/>
-            <div style={{marginTop:"7px",fontSize:"9px",color:DIM,fontFamily:"monospace"}}>Added: {sel.addedDate}</div>
-          </div>}
+      </div>
+      {/* Overall progress */}
+      <div style={{display:"flex",justifyContent:"space-between",fontSize:"9px",color:MUT,fontFamily:"monospace",marginBottom:"4px"}}>
+        <span>Overall — {overall}% complete</span>
+        <span style={{color:stg.color}}>{stg.label}</span>
+      </div>
+      <ProgressBar pct={overall} color={stg.color} height={5}/>
+    </div>
+
+```
+{/* Tabs */}
+<div style={{background:PAN,borderBottom:"1px solid "+BOR,display:"flex",paddingLeft:"10px",flexShrink:0}}>
+  {[["pipeline","Pipeline"],["profile","Profile"],["notes","Notes"]].map(([id,label])=>
+    <button key={id} onClick={()=>setTab(id)} style={{padding:"7px 12px",background:"transparent",border:"none",borderBottom:tab===id?"2px solid "+G:"2px solid transparent",color:tab===id?G:MUT,fontSize:"11px"}}>{label}</button>
+  )}
+</div>
+
+<div style={{flex:1,overflowY:"auto",padding:"12px 14px"}}>
+  {tab==="pipeline"&&<div>
+    {/* Stage mini-scoreboard */}
+    <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:"6px",marginBottom:"12px"}}>
+      {STAGES.map(s=>{
+        const p=stageProgress(inf,s.id);
+        return <div key={s.id} style={{background:CARD,border:"1px solid "+(p===100?s.color+"60":BOR),borderRadius:"3px",padding:"7px 8px",textAlign:"center"}}>
+          <div style={{fontSize:"13px",fontWeight:"bold",fontFamily:"monospace",color:p===100?s.color:p>0?"#f59e0b":MUT}}>{p}%</div>
+          <div style={{fontSize:"8px",color:MUT,marginTop:"2px"}}>{s.label}</div>
+        </div>;
+      })}
+    </div>
+    {/* Collapsible stages */}
+    {STAGES.map(s=>(
+      <StageSection key={s.id} inf={inf} stage={s} onToggle={toggleStep}
+        dmText={dmText} onGenDM={genDM} dmLoading={dmLoading} dmErr={dmErr}/>
+    ))}
+  </div>}
+
+  {tab==="profile"&&<div style={{display:"flex",flexDirection:"column",gap:"9px"}}>
+    <div style={{background:CARD,border:"1px solid "+BOR,borderRadius:"4px",padding:"11px"}}>
+      <div style={{fontSize:"8px",color:MUT,letterSpacing:"2px",textTransform:"uppercase",fontFamily:"monospace",marginBottom:"9px"}}>Profile</div>
+      {[
+        ["Handle","@"+(inf.handle||"—")],
+        ["Name",inf.name||"—"],
+        ["Niche",inf.niche||"—"],
+        ["Followers",inf.followers||"—"],
+        ["Engagement",inf.engagement||"—"],
+        ["Location",inf.location||"—"],
+        ["Fit Score",inf.fitScore?(inf.fitScore+"/10"):"—"],
+      ].map(([l,v])=>(
+        <div key={l} style={{display:"flex",gap:"8px",marginBottom:"6px",fontSize:"11px"}}>
+          <span style={{color:DIM,fontFamily:"monospace",minWidth:"80px",flexShrink:0}}>{l}</span>
+          <span style={{color:l==="Fit Score"?sc(parseInt(inf.fitScore)||0):TXT}}>{v}</span>
         </div>
-      </React.Fragment>}
+      ))}
+    </div>
+    <div style={{background:CARD,border:"1px solid "+BOR,borderRadius:"4px",padding:"11px"}}>
+      <div style={{fontSize:"8px",color:MUT,letterSpacing:"2px",textTransform:"uppercase",fontFamily:"monospace",marginBottom:"9px"}}>TCC Fit</div>
+      <div style={{fontSize:"11px",color:TXT,lineHeight:"1.7"}}>{inf.fitReason||"No fit assessment yet."}</div>
+      {inf.bestAngle&&<div style={{marginTop:"8px"}}><div style={{fontSize:"8px",color:MUT,fontFamily:"monospace",marginBottom:"3px"}}>BEST ANGLE</div><div style={{fontSize:"11px",color:TXT,lineHeight:"1.5"}}>{inf.bestAngle}</div></div>}
+    </div>
+  </div>}
+
+  {tab==="notes"&&<div>
+    <div style={{fontSize:"9px",color:MUT,fontFamily:"monospace",marginBottom:"7px"}}>Shared with team · auto-saved on blur</div>
+    <textarea value={notes} onChange={e=>setNotes(e.target.value)} onBlur={()=>onUpdate({notes})}
+      placeholder={"Notes for @"+(inf.handle||"influencer")+"...\n\n- What did they reply?\n- Shipping address?\n- Content angle that worked?\n- Key dates?"}
+      style={{width:"100%",minHeight:"200px",padding:"10px",borderRadius:"4px",resize:"vertical",lineHeight:"1.7"}}/>
+    {inf.addedDate&&<div style={{marginTop:"6px",fontSize:"9px",color:DIM,fontFamily:"monospace"}}>Added: {inf.addedDate}</div>}
+  </div>}
+</div>
+```
+
+  </div>);
+}
+
+function AddInfluencerModal({onAdd,onClose}){
+const[name,setName]=useState(””);
+const[handle,setHandle]=useState(””);
+const[niche,setNiche]=useState(””);
+const[loading,setLoading]=useState(false);
+const[err,setErr]=useState(””);
+
+async function submit(){
+const h=handle.trim().replace(/^@/,””);
+if(!h){setErr(“Handle is required”);return;}
+setLoading(true);setErr(””);
+let aiData={};
+try{
+const raw=await callClaude(
+“Analyze Instagram @”+h+” for The Coffee Code (TCC) specialty espresso brand from Colombia.\n”+
+“TCC: sources cherry near Canon de Taparto, processes at own wet mill aiming for perfection, roasts after ideal reposo, ships by plane 7-10 days after roasting. Double freshness angle.\n\n”+
+“Return ONLY JSON, start with { end with }:\n”+
+‘{“niche”:“main niche”,“followers”:“estimated range”,“engagement”:“estimated %”,“location”:“US city or United States”,“fitScore”:7,“fitReason”:“2 sentences on fit”,“bestAngle”:“best DM hook for TCC”}’
+);
+aiData=exJSON(raw)||{};
+}catch(e){setErr(“AI unavailable — saved with manual data only”);}
+const inf={
+id:Date.now().toString(),
+name:name.trim(),
+handle:h,
+niche:niche.trim()||aiData.niche||””,
+followers:aiData.followers||””,
+engagement:aiData.engagement||””,
+location:aiData.location||””,
+fitScore:aiData.fitScore||5,
+fitReason:aiData.fitReason||””,
+bestAngle:aiData.bestAngle||””,
+status:“active”,
+steps:{},
+notes:””,
+addedDate:tod(),
+};
+onAdd(inf);
+setLoading(false);
+}
+
+return(
+
+  <div style={{position:"fixed",inset:0,background:"#000000a0",display:"flex",alignItems:"center",justifyContent:"center",zIndex:100,padding:"20px"}}>
+    <div style={{background:PAN,border:"1px solid "+BOR,borderRadius:"6px",padding:"20px",width:"100%",maxWidth:"420px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"16px"}}>
+        <div style={{fontSize:"13px",fontWeight:"bold",color:G,fontFamily:"monospace"}}>ADD INFLUENCER</div>
+        <button onClick={onClose} style={{background:"transparent",border:"none",color:MUT,fontSize:"16px"}}>✕</button>
+      </div>
+      {[
+        ["Instagram Handle *","text",handle,setHandle,"tannercolsoncoffee"],
+        ["Full Name","text",name,setName,"Tanner Colson"],
+        ["Niche (optional)","text",niche,setNiche,"Specialty Coffee"],
+      ].map(([label,type,val,setter,ph])=>(
+        <div key={label} style={{marginBottom:"12px"}}>
+          <div style={{fontSize:"9px",color:MUT,fontFamily:"monospace",letterSpacing:"1px",marginBottom:"5px"}}>{label.toUpperCase()}</div>
+          <input type={type} value={val} onChange={e=>setter(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&!loading&&submit()}
+            placeholder={ph} style={{width:"100%"}}/>
+        </div>
+      ))}
+      {err&&<div style={{fontSize:"10px",color:"#f59e0b",marginBottom:"10px",fontFamily:"monospace"}}>{err}</div>}
+      <div style={{display:"flex",gap:"8px",marginTop:"4px"}}>
+        <button onClick={submit} disabled={loading||!handle.trim()} style={{...btn(G),flex:1,textAlign:"center"}}>
+          {loading?"Building profile with AI...":"Add Influencer"}
+        </button>
+        <button onClick={onClose} style={{...btn(MUT)}}>Cancel</button>
+      </div>
+      <div style={{marginTop:"10px",fontSize:"9px",color:DIM,fontFamily:"monospace"}}>AI will auto-fill niche, followers, fit score and best angle.</div>
+    </div>
+  </div>);
+}
+
+function App(){
+const sb=supabase.createClient(SB_URL,SB_KEY);
+const[infs,setInfs]=useState([]);
+const[selId,setSelId]=useState(null);
+const[syncing,setSyncing]=useState(true);
+const[showAdd,setShowAdd]=useState(false);
+const[lastSync,setLastSync]=useState(null);
+const[filter,setFilter]=useState(“all”);
+
+async function dbLoad(){
+const res=await sb.from(“influencers”).select(”*”).order(“id”,{ascending:false});
+if(res.error)throw res.error;
+return(res.data||[]).map(r=>({…r.data,_dbHandle:r.handle}));
+}
+async function dbSave(inf){
+const handle=inf.handle||inf._dbHandle;
+const{_dbHandle,…data}=inf;
+await sb.from(“influencers”).upsert({handle,data,updated_at:new Date().toISOString()},{onConflict:“handle”});
+}
+async function dbDel(handle){await sb.from(“influencers”).delete().eq(“handle”,handle);}
+
+useEffect(()=>{
+setSyncing(true);
+dbLoad().then(rows=>{setInfs(rows);setSyncing(false);setLastSync(new Date());}).catch(()=>setSyncing(false));
+},[]);
+
+useEffect(()=>{
+const ch=sb.channel(“crm2”).on(“postgres_changes”,{event:”*”,schema:“public”,table:“influencers”},()=>{
+dbLoad().then(rows=>{setInfs(rows);setLastSync(new Date());});
+}).subscribe();
+return()=>sb.removeChannel(ch);
+},[]);
+
+const sel=infs.find(i=>i.id===selId)||infs[0]||null;
+
+function updateInf(id,patch){
+setInfs(p=>p.map(i=>{
+if(i.id!==id)return i;
+const u={…i,…patch};
+dbSave(u);
+return u;
+}));
+}
+
+function addInf(inf){
+setInfs(p=>[inf,…p]);
+dbSave(inf);
+setSelId(inf.id);
+setShowAdd(false);
+}
+
+function delInf(inf){
+dbDel(inf.handle||inf._dbHandle);
+setInfs(p=>p.filter(i=>i.id!==inf.id));
+setSelId(null);
+}
+
+const dueCount=infs.filter(i=>i.status===“active”&&overallProgress(i)<100).length;
+const activeCount=infs.filter(i=>i.status===“converting”).length;
+
+const filtered=infs.filter(i=>{
+if(filter===“all”)return true;
+return i.status===filter;
+});
+
+return(
+
+  <div style={{height:"100vh",background:BG,color:TXT,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+```
+{/* HEADER */}
+<div style={{background:PAN,borderBottom:"1px solid "+BOR,padding:"10px 16px",display:"flex",alignItems:"center",gap:"12px",flexShrink:0}}>
+  <div><div style={{fontSize:"8px",letterSpacing:"3px",color:MUT,fontFamily:"monospace"}}>THE COFFEE CODE</div><div style={{fontSize:"15px",fontWeight:"bold",color:G}}>Influencer CRM</div></div>
+  <div style={{flex:1}}/>
+  <span style={{fontSize:"9px",fontFamily:"monospace",color:syncing?"#f59e0b":"#10b981"}}>{syncing?"syncing...":"● live"}{lastSync&&!syncing&&<span style={{color:DIM,marginLeft:5}}>{lastSync.toLocaleTimeString()}</span>}</span>
+  {[["Total",infs.length,TXT],["In Progress",dueCount,"#f59e0b"],["Converting",activeCount,"#10b981"]].map(([l,v,c])=>(
+    <div key={l} style={{textAlign:"center",minWidth:"36px"}}><div style={{fontSize:"14px",fontWeight:"bold",fontFamily:"monospace",color:c,lineHeight:1}}>{v}</div><div style={{fontSize:"8px",color:DIM,fontFamily:"monospace"}}>{l}</div></div>
+  ))}
+  <button onClick={()=>setShowAdd(true)} style={{...btn(G),padding:"5px 12px",fontSize:"11px"}}>+ Add</button>
+</div>
+
+<div style={{display:"flex",flex:1,overflow:"hidden",minHeight:0}}>
+
+  {/* LEFT — Influencer Tabs */}
+  <div style={{width:"220px",borderRight:"1px solid "+BOR,display:"flex",flexDirection:"column",flexShrink:0}}>
+    {/* Filter */}
+    <div style={{padding:"8px",borderBottom:"1px solid "+DIM,display:"flex",gap:"3px",flexWrap:"wrap",flexShrink:0}}>
+      <button onClick={()=>setFilter("all")} style={{...pill(filter==="all",G,true)}}>All {infs.length}</button>
+      {STATUSES.map(s=>{
+        const n=infs.filter(i=>i.status===s.id).length;
+        if(!n)return null;
+        return <button key={s.id} onClick={()=>setFilter(s.id)} style={{...pill(filter===s.id,s.color,true)}}>{s.label} {n}</button>;
+      })}
+    </div>
+    {/* List */}
+    <div style={{flex:1,overflowY:"auto"}}>
+      {filtered.length===0&&<div style={{padding:"24px 12px",textAlign:"center",color:DIM,fontSize:"11px",lineHeight:2}}>
+        <div style={{fontSize:"20px",opacity:.1,marginBottom:"6px"}}>☕</div>No influencers yet.<br/>Tap + Add to start.
+      </div>}
+      {filtered.map(inf=>{
+        const p=overallProgress(inf);
+        const stg=currentStage(inf);
+        const stat=STATUSES.find(s=>s.id===inf.status)||STATUSES[0];
+        const isSel=sel?.id===inf.id;
+        return(
+        <div key={inf.id} onClick={()=>setSelId(inf.id)}
+          style={{padding:"9px 10px",borderBottom:"1px solid "+DIM,cursor:"pointer",background:isSel?"#161108":"transparent",borderLeft:isSel?"3px solid "+G:"3px solid transparent"}}>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:"2px"}}>
+            <div style={{color:G,fontSize:"12px",fontWeight:"bold",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"130px"}}>@{inf.handle||"—"}</div>
+            <span style={{fontSize:"9px",color:stat.color,fontFamily:"monospace"}}>{p}%</span>
+          </div>
+          {inf.name&&<div style={{fontSize:"10px",color:MUT,marginBottom:"3px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inf.name}</div>}
+          <ProgressBar pct={p} color={stg.color} height={3} style={{marginBottom:"4px"}}/>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:"9px",background:stg.color+"20",color:stg.color,border:"1px solid "+stg.color+"40",padding:"1px 5px",borderRadius:"10px",fontFamily:"monospace"}}>{stg.label}</span>
+            <span style={{fontSize:"9px",color:stat.color,fontFamily:"monospace"}}>{stat.label}</span>
+          </div>
+        </div>);
+      })}
     </div>
   </div>
-</div>);
+
+  {/* RIGHT — Detail */}
+  <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+    {!sel
+      ?<div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:"10px",color:DIM}}>
+        <div style={{fontSize:"30px",opacity:.1}}>☕</div>
+        <div style={{fontFamily:"monospace",fontSize:"11px",textAlign:"center",lineHeight:2}}>Add an influencer to get started.<br/><span style={{color:"#10b981",fontSize:"10px"}}>Syncs live with your team.</span></div>
+        <button onClick={()=>setShowAdd(true)} style={{...btn(G)}}>+ Add Influencer</button>
+      </div>
+      :<InfluencerView
+        inf={sel}
+        onUpdate={patch=>updateInf(sel.id,patch)}
+        onDelete={()=>delInf(sel)}
+      />
+    }
+  </div>
+</div>
+
+{showAdd&&<AddInfluencerModal onAdd={addInf} onClose={()=>setShowAdd(false)}/>}
+```
+
+  </div>);
 }
-ReactDOM.render(<App/>,document.getElementById("root"));
+
+ReactDOM.render(<App/>,document.getElementById(“root”));
 </script>
+
 </body>
 </html>
