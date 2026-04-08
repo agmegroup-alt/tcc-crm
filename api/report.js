@@ -76,7 +76,7 @@ async function fetchInfluencers() {
 function buildHTML(infs) {
   const now = new Date();
   const dateStr = now.toLocaleDateString("en-US", { weekday:"long", year:"numeric", month:"long", day:"numeric" });
-  const C = { bg:"#0a0906", panel:"#111009", card:"#161410", border:"#2a2418", gold:"#c9943a", text:"#e4dccb", muted:"#7a6840", dim:"#4a3c24", green:"#10b981", orange:"#f97316", red:"#ef4444", purple:"#8b5cf6" };
+  const C = { bg:"#ffffff", panel:"#f8f6f3", card:"#f2ede8", border:"#e0d8cf", gold:"#a0722a", text:"#1a1208", muted:"#6b5a3e", dim:"#9c8a6e", green:"#0d7a5f", orange:"#c4621a", red:"#c0392b", purple:"#6d4faa" };
 
   // Global stats
   const total      = infs.length;
