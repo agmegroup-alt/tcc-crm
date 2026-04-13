@@ -193,7 +193,10 @@ function Detail({inf,onUpdate,onDelete}){
     <div style={{background:PAN,borderBottom:"1px solid "+BOR,padding:"12px 16px",flexShrink:0,boxShadow:"0 1px 3px rgba(0,0,0,0.06)"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:"8px"}}>
         <div>
-          <div style={{fontSize:"18px",fontWeight:"bold",color:TXT}}>@{inf.handle||"?"}</div>
+          <a href={"https://instagram.com/"+(inf.handle||"")} target="_blank" style={{fontSize:"18px",fontWeight:"bold",color:TXT,textDecoration:"none",display:"flex",alignItems:"center",gap:"6px"}}>
+            @{inf.handle||"?"}
+            <span style={{fontSize:"11px",color:MUT,fontFamily:"monospace"}}>↗</span>
+          </a>
           <div style={{display:"flex",gap:"8px",alignItems:"center",marginTop:"3px",flexWrap:"wrap"}}>
             {inf.name&&<span style={{fontSize:"11px",color:MUT}}>{inf.name}</span>}
             {ACCOUNTS.map(a=><button key={a.id} onClick={()=>onUpdate({account:a.id})} style={{fontSize:"10px",background:(inf.account||"alejandro")===a.id?a.color+"15":"transparent",color:(inf.account||"alejandro")===a.id?a.color:DIM,border:"1px solid "+((inf.account||"alejandro")===a.id?a.color+"60":BOR),padding:"2px 8px",borderRadius:"12px",fontFamily:"monospace",cursor:"pointer"}}>{a.label}</button>)}
@@ -412,7 +415,9 @@ function App(){
             const p=overall(inf);const stg=curStage(inf);const stat=STATUSES.find(s=>s.id===inf.status)||STATUSES[0];const isSel=sel&&sel.id===inf.id;
             return <div key={inf.id||inf._h} onClick={()=>setSelId(inf.id||inf._h)} style={{padding:"10px 12px",borderBottom:"1px solid "+BOR,cursor:"pointer",background:isSel?"#fdf8f0":"#fff",borderLeft:isSel?"3px solid "+G:"3px solid transparent",transition:"background .1s"}}>
               <div style={{display:"flex",justifyContent:"space-between",marginBottom:"3px"}}>
-                <div style={{color:isSel?G:TXT,fontSize:"13px",fontWeight:"bold",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"140px"}}>@{inf.handle||"?"}</div>
+                <div style={{color:isSel?G:TXT,fontSize:"13px",fontWeight:"bold",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:"140px"}}>
+                  <a href={"https://instagram.com/"+(inf.handle||"")} target="_blank" onClick={e=>e.stopPropagation()} style={{color:"inherit",textDecoration:"none"}}>@{inf.handle||"?"}</a>
+                </div>
                 <span style={{fontSize:"10px",color:stat.color,fontFamily:"monospace",fontWeight:"bold"}}>{p}%</span>
               </div>
               {inf.name&&<div style={{fontSize:"10px",color:MUT,marginBottom:"4px",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{inf.name}</div>}
