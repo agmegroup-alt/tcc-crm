@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>TCC CRM — Alexandra Import</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f9f7f4;font-family:Georgia,serif;padding:30px;color:#1a1208}
+h1{color:#6d4faa;font-size:20px;margin-bottom:6px}
+p{color:#8a7458;font-size:13px;margin-bottom:20px;line-height:1.6}
+.warn{background:#fef9ec;border:1px solid #f0d080;border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#7a5c00;font-family:monospace;line-height:2}
+button{background:#6d4faa;color:#fff;border:none;padding:12px 28px;font-size:14px;border-radius:6px;cursor:pointer;font-family:monospace}
+button:disabled{opacity:.5;cursor:not-allowed}
+#log{margin-top:20px;font-family:monospace;font-size:12px;line-height:2}
+.ok{color:#0d7a5f}.skip{color:#8a7458}.err{color:#c0392b}.bold{font-weight:bold;font-size:13px}
+</style>
+</head>
+<body>
+<h1>Alexandra — Import 16 Contacts</h1>
+<div class="warn">
+  4 contacts already exist in Alejandro's account — skipped automatically:<br/>
+  coffeevibes03 · sweetcoffeecravings · mamamadecoffee · brooklynnlikesespresso
+</div>
+<p>16 new contacts will be added to Alexandra's account. Safe to run multiple times — skips duplicates.</p>
+<button id="btn" onclick="runImport()">Import 16 Contacts to Alexandra</button>
+<div id="log"></div>
+<script>
+const SB = supabase.createClient(
+  "https://zotmzaezodgszcjbfktt.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvdG16YWV6b2Rnc3pjamJma3R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODQ1MzAsImV4cCI6MjA5MDU2MDUzMH0.wGxNInF52zyhwHsDvuWJDRpVrxgDBgCCOVlq0rTHhyE"
+);
+
+const CONTACTS = [
+  {handle:"the30abarista",      name:"Patrick Price",    followers:"12.8K", niche:"In-Home Barista Experience / Consultant", location:"United States",     email:"the30abarista.com",              fitScore:8},
+  {handle:"the_brewtom",        name:"Brewtom",          followers:"4.2K",  niche:"Cinematic Coffee / Photography / DIY",   location:"United States",     email:"",                               fitScore:8},
+  {handle:"el.capitano.kirk",   name:"Kirk Pearson",     followers:"11.7K", niche:"Coffee Sourcing / Barista",              location:"United States",     email:"",                               fitScore:8},
+  {handle:"coffeeboylikescoffee",name:"Coffeeboy",       followers:"608",   niche:"Fun / Unhinged Coffee Content",          location:"United States",     email:"",                               fitScore:7},
+  {handle:"created2coffee",     name:"Created To Coffee",followers:"238K",  niche:"Creative Home Coffee / Better Ingredients",location:"United States",   email:"linktr.ee/createdtocooffee",     fitScore:9},
+  {handle:"whatrobineats",      name:"Robin Plotnik",    followers:"173K",  niche:"Coffee / Desserts / Healthy Cooking",    location:"United States",     email:"whatrobineats.com",              fitScore:8},
+  {handle:"outbacksheriffs",    name:"Sydney Sherriff",  followers:"111K",  niche:"5AM Club / Routines / Mindset",          location:"United States",     email:"stan.store/outbacksherriff",     fitScore:7},
+  {handle:"cafearcadia.nyc",    name:"Cafe Arcadia",     followers:"2.7K",  niche:"Fake Cafe Comedy / NYC Couple",          location:"New York, NY",      email:"cafearcadiaofficial@gmail.com",  fitScore:7},
+  {handle:"fifiscoffee",        name:"Sofia H.",         followers:"123K",  niche:"Coffee Recipes / Spanglish Content",     location:"Philadelphia, PA",  email:"sofia@pearpop.co",               fitScore:9},
+  {handle:"katerinafaith",      name:"Katerina Diaz",    followers:"653K",  niche:"Coffee Shop Level Coffee at Home",       location:"United States",     email:"katerinafaith@outlook.com",      fitScore:9},
+  {handle:"athomewithkimmmm",   name:"Kim M",            followers:"122K",  niche:"Home Coffee Bar / Snacks / Dinner",      location:"Central NJ",        email:"kat@coastlinecreatives.com",     fitScore:8},
+  {handle:"ac_homecafe",        name:"Asia Lui Chapa",   followers:"121K",  niche:"Home Cafe / Recipes / Author",           location:"United States",     email:"beacons.ai/ac_homecafe",         fitScore:9},
+  {handle:"noahsterncoffee",    name:"Noah Stern",       followers:"519K",  niche:"Better Coffee at Home / Reviews",        location:"United States",     email:"noahstern@undercurrent.net",     fitScore:9},
+  {handle:"pullandpourcoffee",  name:"Andrew Pull & Pour",followers:"395K", niche:"Specialty Coffee / Reviews / How-Tos",   location:"United States",     email:"pullandpourcoffee.com",          fitScore:9},
+  {handle:"michaelmatthew_",    name:"Michael Matthew",  followers:"90.6K", niche:"Bartender / Coffee Content",             location:"United States",     email:"michaelslabach1@yahoo.com",      fitScore:7},
+  {handle:"cafe.cindy",         name:"Cindy's Homecafe", followers:"166K",  niche:"Doodles / Matcha / Coffee",              location:"United States",     email:"cindyycafe@gmail.com",           fitScore:8},
+];
+
+function log(msg, cls) {
+  const d = document.getElementById("log");
+  const div = document.createElement("div");
+  div.className = cls||"";
+  div.textContent = msg;
+  d.appendChild(div);
+  window.scrollTo(0, document.body.scrollHeight);
+}
+
+async function runImport() {
+  const btn = document.getElementById("btn");
+  btn.disabled = true;
+  btn.textContent = "Importing...";
+  document.getElementById("log").innerHTML = "";
+
+  const {data:existing} = await SB.from("influencers").select("handle");
+  const existing_set = new Set((existing||[]).map(r=>r.handle.toLowerCase()));
+  log("Found "+existing_set.size+" contacts in CRM — skipping any duplicates", "skip");
+  log("", "");
+
+  let added=0, skipped=0;
+  const today = new Date().toISOString().split("T")[0];
+
+  for (const c of CONTACTS) {
+    if (existing_set.has(c.handle.toLowerCase())) {
+      log("skip  @"+c.handle+" — already exists", "skip");
+      skipped++;
+      continue;
+    }
+    const inf = {
+      id: Date.now().toString()+Math.random().toString(36).slice(2,5),
+      name: c.name, handle: c.handle, account: "alexandra",
+      niche: c.niche, followers: c.followers, engagement: "",
+      email: c.email, location: c.location,
+      fitScore: c.fitScore, fitReason: "", bestAngle: "",
+      status: "active", steps: {}, notes: "", addedDate: today,
+    };
+    const {error} = await SB.from("influencers").upsert(
+      {handle:c.handle, data:inf, updated_at:new Date().toISOString()},
+      {onConflict:"handle"}
+    );
+    if (error) { log("ERR   @"+c.handle+" — "+error.message, "err"); }
+    else { log("added @"+c.handle+" — "+c.niche+" — "+c.followers, "ok"); added++; }
+    await new Promise(r=>setTimeout(r,80));
+  }
+
+  log("", "");
+  log("Done. Added: "+added+"  |  Skipped: "+skipped, "bold");
+  log("Open tcc-crm.vercel.app → Alexandra tab", "skip");
+  btn.textContent = "Done — "+added+" added to Alexandra";
+}
+</script>
+</body>
+</html>
