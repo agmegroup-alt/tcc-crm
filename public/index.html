@@ -350,7 +350,7 @@ function App(){
 
   const acctInfs=infs.filter(i=>(i.account||"alejandro")===acctTab);
   const sel=acctInfs.find(i=>i.id===selId)||(acctInfs.length>0?acctInfs[0]:null);
-  const filt=acctInfs.filter(i=>filter==="all"||i.status===filter);
+  const filt=acctInfs.filter(i=>filter==="all"||(filter.startsWith("stage_")?curStage(i).id===filter.replace("stage_",""):i.status===filter));
   const due=acctInfs.filter(i=>i.status==="active"&&overall(i)<100).length;
   const conv=acctInfs.filter(i=>i.status==="converting").length;
   const allHandles=infs.map(i=>(i.handle||"").toLowerCase());
@@ -398,9 +398,14 @@ function App(){
 
       {/* SIDEBAR */}
       <div style={{width:"220px",borderRight:"1px solid "+BOR,display:"flex",flexDirection:"column",flexShrink:0,background:PAN}}>
-        <div style={{padding:"8px",borderBottom:"1px solid "+BOR,display:"flex",gap:"3px",flexWrap:"wrap",flexShrink:0}}>
-          <button onClick={()=>setFilter("all")} style={{...pill(filter==="all",G,true)}}>All {acctInfs.length}</button>
-          {STATUSES.map(s=>{const n=acctInfs.filter(i=>i.status===s.id).length;return n?<button key={s.id} onClick={()=>setFilter(s.id)} style={{...pill(filter===s.id,s.color,true)}}>{s.label} {n}</button>:null;})}
+        <div style={{padding:"8px",borderBottom:"1px solid "+BOR,flexShrink:0}}>
+          <div style={{display:"flex",gap:"3px",flexWrap:"wrap",marginBottom:"5px"}}>
+            <button onClick={()=>setFilter("all")} style={{...pill(filter==="all",G,true)}}>All {acctInfs.length}</button>
+            {STATUSES.map(s=>{const n=acctInfs.filter(i=>i.status===s.id).length;return n?<button key={s.id} onClick={()=>setFilter(s.id)} style={{...pill(filter===s.id,s.color,true)}}>{s.label} {n}</button>:null;})}
+          </div>
+          <div style={{display:"flex",gap:"3px",flexWrap:"wrap"}}>
+            {STAGES.map(s=>{const n=acctInfs.filter(i=>curStage(i).id===s.id).length;return n?<button key={s.id} onClick={()=>setFilter("stage_"+s.id)} style={{...pill(filter==="stage_"+s.id,s.color,true)}}>{s.label} {n}</button>:null;})}
+          </div>
         </div>
         <div style={{flex:1,overflowY:"auto"}}>
           {filt.length===0&&<div style={{padding:"28px 14px",textAlign:"center",color:DIM,fontSize:"11px",lineHeight:2.2}}>
