@@ -173,6 +173,7 @@ function Detail({inf,onUpdate,onDelete}){
   const [dmLoad,setDmLoad]=useState(false);
   const [dmErr,setDmErr]=useState("");
   const [notes,setNotes]=useState(inf.notes||"");
+  useEffect(()=>{ setNotes(inf.notes||""); },[inf.id]);
   const o=overall(inf);
   const stg=curStage(inf);
   const acct=ACCOUNTS.find(a=>a.id===(inf.account||"alejandro"))||ACCOUNTS[0];
@@ -443,7 +444,7 @@ function App(){
             </div>
             <button onClick={()=>setShowAdd(true)} style={{...btn(G),padding:"10px 20px",fontSize:"12px",borderRadius:"6px"}}>+ Add Influencer</button>
           </div>
-          :<Detail inf={sel} onUpdate={patch=>update(sel.id||sel._h,patch)} onDelete={()=>del(sel)}/>
+          :<Detail key={sel.id||sel._h} inf={sel} onUpdate={patch=>update(sel.id||sel._h,patch)} onDelete={()=>del(sel)}/>
         }
       </div>
     </div>
