@@ -13,18 +13,19 @@ p{color:#8a7458;font-size:13px;margin-bottom:16px;line-height:1.6}
 .warn{background:#f0fdf8;border:1px solid #a0d8c8;border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#0d7a5f;font-family:monospace;line-height:2}
 button{background:#0d7a5f;color:#fff;border:none;padding:12px 28px;font-size:14px;border-radius:6px;cursor:pointer;font-family:monospace}
 button:disabled{opacity:.5;cursor:not-allowed}
-#log{margin-top:20px;font-family:monospace;font-size:12px;line-height:2;background:#fff;border:1px solid #e0d4c0;border-radius:6px;padding:12px}
+#log{margin-top:20px;font-family:monospace;font-size:12px;line-height:2;background:#fff;border:1px solid #e0d4c0;border-radius:6px;padding:12px;max-height:400px;overflow-y:auto}
 .ok{color:#0d7a5f}.skip{color:#8a7458}.err{color:#c0392b}.bold{font-weight:bold;font-size:13px}
 </style>
 </head>
 <body>
-<h1>The Coffee Code — Import 21 Contacts</h1>
+<h1>The Coffee Code — Import 32 Contacts</h1>
 <div class="warn">
-  2 already exist in other accounts — skipped automatically:<br/>
-  mamamadecoffee (Alejandro) · katerinafaith (Alexandra)
+  2 skipped — already exist in other accounts:<br/>
+  mamamadecoffee (Alejandro) · katerinafaith (Alexandra)<br/>
+  Note: amandasekuli_c and befatbehappy had spaces in original — cleaned automatically.
 </div>
-<p>21 new contacts assigned to The Coffee Code. Safe to run multiple times.</p>
-<button id="btn" onclick="runImport()">Import 21 Contacts</button>
+<p>32 contacts assigned to The Coffee Code. Safe to run multiple times.</p>
+<button id="btn" onclick="runImport()">Import 32 Contacts</button>
 <div id="log"></div>
 <script>
 const SB = supabase.createClient(
@@ -33,27 +34,38 @@ const SB = supabase.createClient(
 );
 
 const CONTACTS = [
-  {handle:"jimmyeverydayy",         name:"Jimmy Johnson",          followers:"120K",  niche:"Dad Lifestyle / Community",              location:"United States",    email:"jimmy@rootforgroup.com",         fitScore:6},
-  {handle:"andeanbean",             name:"Andean Bean",            followers:"1.3K",  niche:"Specialty Coffee / Education",           location:"United States",    email:"",                               fitScore:9},
-  {handle:"zachrjohnston",          name:"Zach Johnston",          followers:"27.5K", niche:"Home Coffee Brewing / Gear",             location:"Marshfield, MO",   email:"",                               fitScore:9},
-  {handle:"andsercoffee",           name:"Andrew and Serena",      followers:"2.3K",  niche:"Coffee Omakase / Home Drinks",           location:"New York, NY",     email:"",                               fitScore:9},
-  {handle:"baristainpajamas",       name:"Barista in Pajamas",     followers:"83.9K", niche:"Home Barista Tips / Unique Recipes",     location:"United States",    email:"",                               fitScore:9},
-  {handle:"coffeeewithhabbs",       name:"Coffeeewithhabbs",       followers:"18K",   niche:"Foodie / Mom Life / Coffee",             location:"Idaho",            email:"coffeeewithhabbs@outlook.com",   fitScore:8},
-  {handle:"coffee_and_kay",         name:"Karissa Ware-Curry",     followers:"4.5K",  niche:"Coffee / Lifestyle / Mom",               location:"United States",    email:"karissawarecurry@gmail.com",     fitScore:8},
-  {handle:"beans_and_milk",         name:"Tony",                   followers:"8.3K",  niche:"Coffee Education",                       location:"United States",    email:"",                               fitScore:9},
-  {handle:"nourish_naturally",      name:"Rebecca Gawthorne",      followers:"382K",  niche:"Dietitian / Healthy Recipes",            location:"Sydney, Australia", email:"",                              fitScore:6},
-  {handle:"adventurefoodie",        name:"Nisha Stephen",          followers:"6K",    niche:"Food / Lifestyle / Travel",              location:"East Coast, FL",   email:"",                               fitScore:7},
-  {handle:"esther__richards",       name:"Esther Richards",        followers:"8.5K",  niche:"Motherhood / Lifestyle / UGC",           location:"Kentucky",         email:"estherliz96@yahoo.com",          fitScore:6},
-  {handle:"kelsbreiner",            name:"Kelsey",                 followers:"18.8K", niche:"Coffee / Baking / Lifestyle",            location:"Washington",       email:"kelsbreiner@gmail.com",          fitScore:9},
-  {handle:"mexibeastbbq",           name:"Steve Hernandez",        followers:"31.4K", niche:"Cooking / Overland Adventures",          location:"United States",    email:"",                               fitScore:6},
-  {handle:"bkelly5192",             name:"Brock Kelly",            followers:"91.1K", niche:"Digital Creator / Business",             location:"United States",    email:"thebrockkelly@gmail.com",        fitScore:6},
-  {handle:"cj.eats_",              name:"Chris Joe",               followers:"1.1M",  niche:"Easy Recipes / Home Cooking",            location:"United States",    email:"chris@cj.eatsrecipes.com",       fitScore:7},
-  {handle:"laurenvelazquez_",       name:"Lauren",                 followers:"11.6K", niche:"SAHM / Faith / Lifestyle",               location:"Orange County, CA",email:"laurenkvelazquez@gmail.com",     fitScore:7},
-  {handle:"byariannamarie",         name:"Arianna Marie",          followers:"6K",    niche:"UGC / Home Barista / Mom",               location:"United States",    email:"ariannatucker.ugc@gmail.com",    fitScore:8},
-  {handle:"janiceestrada.sahm",     name:"Janice Estrada",         followers:"23.2K", niche:"SAHM Vlogs / Coffee",                    location:"Colorado",         email:"JaniceeEstrada@gmail.com",       fitScore:8},
-  {handle:"moonwakecoffeeroasters", name:"Moonwake Coffee Roasters",followers:"9.3K", niche:"Single-Origin Coffee Roastery",          location:"San Jose, CA",     email:"",                               fitScore:7},
-  {handle:"christian.j.lynch",      name:"Christian J Lynch",      followers:"12.3K", niche:"Coffee Cart Business / Entrepreneur",    location:"Kansas City, MO",  email:"",                               fitScore:8},
-  {handle:"isampatterson",          name:"Sam Patterson",          followers:"578K",  niche:"Couple / Family Lifestyle",              location:"United States",    email:"",                               fitScore:6},
+  {handle:"jimmyeverydayy",         name:"Jimmy Johnson",           followers:"120K",  niche:"Dad / Family Community",               location:"United States",     email:"jimmy@rootforgroup.com",          fitScore:6},
+  {handle:"andeanbean",             name:"Andean Bean",             followers:"1.3K",  niche:"Specialty Coffee / Education",         location:"United States",     email:"",                                fitScore:9},
+  {handle:"zachrjohnston",          name:"Zach Johnston",           followers:"27.5K", niche:"Home Coffee Brewing / Gear",           location:"Marshfield, MO",    email:"",                                fitScore:9},
+  {handle:"andsercoffee",           name:"Andrew and Serena",       followers:"2.3K",  niche:"Coffee Omakase / Home Drinks",         location:"New York, NY",      email:"",                                fitScore:9},
+  {handle:"baristainpajamas",       name:"Barista in Pajamas",      followers:"83.9K", niche:"Home Barista Tips / Recipes",          location:"United States",     email:"",                                fitScore:9},
+  {handle:"coffeeewithhabbs",       name:"Coffeeewithhabbs",        followers:"18K",   niche:"Mom / Foodie / Coffee",                location:"Idaho",             email:"coffeeewithhabbs@outlook.com",    fitScore:8},
+  {handle:"coffee_and_kay",         name:"Karissa Ware-Curry",      followers:"4.5K",  niche:"Coffee / Mom / Lifestyle",             location:"United States",     email:"karissawarecurry@gmail.com",      fitScore:8},
+  {handle:"beans_and_milk",         name:"Tony",                    followers:"8.3K",  niche:"Coffee Education",                     location:"United States",     email:"",                                fitScore:9},
+  {handle:"nourish_naturally",      name:"Rebecca Gawthorne",       followers:"382K",  niche:"Dietitian / Healthy Recipes",          location:"Sydney, Australia", email:"",                                fitScore:6},
+  {handle:"adventurefoodie",        name:"Nisha Stephen",           followers:"6K",    niche:"Food / Lifestyle / Travel",            location:"East Coast, FL",    email:"",                                fitScore:7},
+  {handle:"esther__richards",       name:"Esther Richards",         followers:"8.5K",  niche:"Motherhood / Lifestyle / UGC",         location:"Kentucky",          email:"estherliz96@yahoo.com",           fitScore:6},
+  {handle:"kelsbreiner",            name:"Kelsey",                  followers:"18.8K", niche:"Coffee / Baking / Lifestyle",          location:"Washington",        email:"kelsbreiner@gmail.com",           fitScore:9},
+  {handle:"mexibeastbbq",           name:"Steve Hernandez",         followers:"31.4K", niche:"BBQ / Cooking Adventures",             location:"United States",     email:"",                                fitScore:6},
+  {handle:"bkelly5192",             name:"Brock Kelly",             followers:"91.1K", niche:"Digital Creator / Lifestyle",          location:"United States",     email:"thebrockkelly@gmail.com",         fitScore:6},
+  {handle:"cj.eats_",              name:"Chris Joe",                followers:"1.1M",  niche:"Easy Home Recipes",                    location:"United States",     email:"chris@cj.eatsrecipes.com",        fitScore:7},
+  {handle:"laurenvelazquez_",       name:"Lauren",                  followers:"11.6K", niche:"SAHM / Family",                        location:"Orange County, CA", email:"laurenkvelazquez@gmail.com",      fitScore:7},
+  {handle:"byariannamarie",         name:"Arianna Marie",           followers:"6K",    niche:"UGC / Home Barista / Mom",             location:"United States",     email:"ariannatucker.ugc@gmail.com",     fitScore:8},
+  {handle:"janiceestrada.sahm",     name:"Janice Estrada",          followers:"23.2K", niche:"SAHM Vlogs / Coffee",                  location:"Colorado",          email:"JaniceeEstrada@gmail.com",        fitScore:8},
+  {handle:"moonwakecoffeeroasters", name:"Moonwake Coffee Roasters",followers:"9.3K",  niche:"Single-Origin Coffee Roastery",        location:"San Jose, CA",      email:"",                                fitScore:7},
+  {handle:"christian.j.lynch",      name:"Christian J Lynch",       followers:"12.3K", niche:"Coffee Cart Business",                 location:"Kansas City, MO",   email:"",                                fitScore:8},
+  {handle:"isampatterson",          name:"Sam Patterson",           followers:"578K",  niche:"Couple / Family Lifestyle",            location:"United States",     email:"",                                fitScore:6},
+  {handle:"nat__day",               name:"Natalie Day",             followers:"15.8K", niche:"Fashion / Las Vegas Lifestyle",        location:"Las Vegas, NV",     email:"",                                fitScore:6},
+  {handle:"kenzierainhoffman",      name:"Kenzie Hoffman",          followers:"15.5K", niche:"Mom / Homemaker",                      location:"United States",     email:"Jessica@pearpop.com",             fitScore:7},
+  {handle:"lifebeyondthelisting",   name:"Ashley Femia",            followers:"758",   niche:"Realtor / Coffee Addict",              location:"Long Island, NY",   email:"",                                fitScore:7},
+  {handle:"karimsalmen",            name:"Karim Salmen",            followers:"109K",  niche:"Miami Lifestyle Creator",              location:"Miami, FL",         email:"info@karimsalmen.com",            fitScore:6},
+  {handle:"themayagraves",          name:"Maya Graves",             followers:"171K",  niche:"Wife / Mom / Faith / Entrepreneur",    location:"United States",     email:"",                                fitScore:7},
+  {handle:"karlikinghauver",        name:"Karli Hauver",            followers:"11.5K", niche:"RN / Lifestyle / Family",              location:"AZ / TX",           email:"",                                fitScore:7},
+  {handle:"amandasekulic",          name:"Amanda Sekulic",          followers:"7.3K",  niche:"Coffee / Baking / Hairstylist",        location:"Orange County, CA", email:"amandasekulic@gmail.com",         fitScore:8},
+  {handle:"gabejardine",            name:"Gabriel Jardine",         followers:"47.4K", niche:"Coffee Content",                       location:"United States",     email:"Gabriel@farmerssoncoffee.com",    fitScore:9},
+  {handle:"doseforaday",            name:"Eugene Kim",              followers:"6.4K",  niche:"Coffee / Lifestyle / Fashion",         location:"Chicago, IL",       email:"",                                fitScore:7},
+  {handle:"befatbehappy",           name:"Caitlin Valentin",        followers:"104K",  niche:"Food / Travel",                        location:"New York, NY",      email:"",                                fitScore:6},
+  {handle:"thebrownbarista",        name:"Sahand Hajizadeh",        followers:"278K",  niche:"Coffee Obsessed Content",              location:"United States",     email:"",                                fitScore:9},
 ];
 
 function log(msg, cls) {
@@ -62,7 +74,7 @@ function log(msg, cls) {
   div.className = cls||"";
   div.textContent = msg;
   d.appendChild(div);
-  window.scrollTo(0, document.body.scrollHeight);
+  d.scrollTop = d.scrollHeight;
 }
 
 async function runImport() {
@@ -90,6 +102,7 @@ async function runImport() {
       name:c.name, handle:c.handle, account:"tcc",
       niche:c.niche, followers:c.followers, engagement:"",
       email:c.email, location:c.location,
+      igUrl:"https://www.instagram.com/"+c.handle,
       fitScore:c.fitScore, fitReason:"", bestAngle:"",
       status:"active", steps:{}, notes:"", addedDate:today,
     };
@@ -104,7 +117,7 @@ async function runImport() {
 
   log("", "");
   log("Done. Added: "+added+"  |  Skipped: "+skipped, "bold");
-  log("Open tcc-crm.vercel.app → The Coffee Code tab", "skip");
+  log("Open tcc-crm.vercel.app — The Coffee Code tab", "skip");
   btn.textContent = "Done — "+added+" added";
 }
 </script>
