@@ -322,6 +322,7 @@ function App(){
   const [lastSync,setLastSync]=useState(null);
   const [filter,setFilter]=useState("all");
   const [acctTab,setAcctTab]=useState("alejandro");
+  const [srch,setSrch]=useState("");
 
   async function load(){
     try{const rows=await dbLoad();setInfs(rows);setLastSync(new Date());setSyncing(false);}
@@ -351,7 +352,14 @@ function App(){
 
   const acctInfs=infs.filter(i=>(i.account||"alejandro")===acctTab);
   const sel=acctInfs.find(i=>i.id===selId)||(acctInfs.length>0?acctInfs[0]:null);
-  const filt=acctInfs.filter(i=>filter==="all"||(filter.startsWith("stage_")?curStage(i).id===filter.replace("stage_",""):i.status===filter));
+  const srchLower=srch.toLowerCase();
+  const filt=acctInfs.filter(i=>{
+    const matchesFilter=filter==="all"||(filter.startsWith("stage_")?curStage(i).id===filter.replace("stage_",""):i.status===filter);
+    const matchesSrch=!srchLower||(i.handle||"").toLowerCase().includes(srchLower)||(i.name||"").toLowerCase().includes(srchLower)||(i.niche||"").toLowerCase().includes(srchLower)||(i.location||"").toLowerCase().includes(srchLower);
+    return matchesFilter&&matchesSrch;
+  });
+  // Global search across ALL accounts
+  const globalSrch=srchLower?infs.filter(i=>(i.handle||"").toLowerCase().includes(srchLower)||(i.name||"").toLowerCase().includes(srchLower)):[];
   const due=acctInfs.filter(i=>i.status==="active"&&overall(i)<100).length;
   const conv=acctInfs.filter(i=>i.status==="converting").length;
   const allHandles=infs.map(i=>(i.handle||"").toLowerCase());
@@ -380,6 +388,10 @@ function App(){
           <div style={{fontSize:"8px",color:DIM,fontFamily:"monospace",marginTop:"2px"}}>{l}</div>
         </div>
       )}
+      <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+        <input value={srch} onChange={e=>setSrch(e.target.value)} placeholder="Search..." style={{width:"160px",padding:"5px 26px 5px 10px",fontSize:"11px",borderRadius:"6px",border:"1px solid "+BOR,background:"#fff",color:TXT,fontFamily:"monospace",outline:"none"}}/>
+        {srch&&<span onClick={()=>setSrch("")} style={{position:"absolute",right:"7px",cursor:"pointer",color:MUT,fontSize:"13px",lineHeight:1}}>x</span>}
+      </div>
       <button onClick={()=>setShowAdd(true)} style={{...btn(G),padding:"7px 14px",fontSize:"12px",borderRadius:"6px"}}>+ Add</button>
     </div>
 
@@ -395,6 +407,21 @@ function App(){
       })}
     </div>
 
+    {srch&&globalSrch.length>0&&<div style={{background:"#fffdf8",borderBottom:"1px solid "+BOR,padding:"8px 16px",flexShrink:0}}>
+      <div style={{fontSize:"9px",color:MUT,fontFamily:"monospace",letterSpacing:"1px",marginBottom:"6px"}}>SEARCH RESULTS ACROSS ALL ACCOUNTS — {globalSrch.length} found</div>
+      <div style={{display:"flex",gap:"5px",flexWrap:"wrap"}}>
+        {globalSrch.slice(0,20).map(inf=>{
+          const acct=ACCOUNTS.find(a=>a.id===(inf.account||"alejandro"))||ACCOUNTS[0];
+          return <button key={inf.id||inf._h} onClick={()=>{setAcctTab(inf.account||"alejandro");setSelId(inf.id||inf._h);setSrch("");}} style={{background:"#fff",border:"1px solid "+BOR,borderRadius:"4px",padding:"4px 10px",fontSize:"11px",cursor:"pointer",display:"flex",alignItems:"center",gap:"6px"}}>
+            <span style={{color:G,fontWeight:"bold"}}>@{inf.handle}</span>
+            <span style={{fontSize:"9px",background:acct.color+"15",color:acct.color,border:"1px solid "+acct.color+"40",padding:"1px 5px",borderRadius:"8px",fontFamily:"monospace"}}>{acct.label}</span>
+            {inf.niche&&<span style={{fontSize:"9px",color:MUT}}>{inf.niche.split("/")[0].trim()}</span>}
+          </button>;
+        })}
+        {globalSrch.length>20&&<span style={{fontSize:"10px",color:MUT,alignSelf:"center"}}>+{globalSrch.length-20} more — refine your search</span>}
+      </div>
+    </div>}
+    {srch&&globalSrch.length===0&&<div style={{background:"#fffdf8",borderBottom:"1px solid "+BOR,padding:"8px 16px",flexShrink:0,fontSize:"11px",color:MUT,fontFamily:"monospace"}}>No results for "{srch}"</div>}
     <div style={{display:"flex",flex:1,overflow:"hidden",minHeight:0}}>
 
       {/* SIDEBAR */}
