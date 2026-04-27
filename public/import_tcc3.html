@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>TCC CRM — Batch 3 Import</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f9f7f4;font-family:Georgia,serif;padding:30px;color:#1a1208}
+h1{color:#0d7a5f;font-size:20px;margin-bottom:6px}
+p{color:#8a7458;font-size:13px;margin-bottom:16px;line-height:1.6}
+.warn{background:#f0fdf8;border:1px solid #a0d8c8;border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:12px;color:#0d7a5f;font-family:monospace;line-height:2}
+button{background:#0d7a5f;color:#fff;border:none;padding:12px 28px;font-size:14px;border-radius:6px;cursor:pointer;font-family:monospace}
+button:disabled{opacity:.5;cursor:not-allowed}
+#log{margin-top:20px;font-family:monospace;font-size:12px;line-height:2;background:#fff;border:1px solid #e0d4c0;border-radius:6px;padding:12px;max-height:400px;overflow-y:auto}
+.ok{color:#0d7a5f}.skip{color:#8a7458}.err{color:#c0392b}.bold{font-weight:bold;font-size:13px}
+</style>
+</head>
+<body>
+<h1>The Coffee Code — Batch 3 Import (34 contacts)</h1>
+<div class="warn">
+  1 skipped — already exists: whatrobineats<br/>
+  mandidinc au → cleaned to mandidincau (space removed)
+</div>
+<p>34 contacts assigned to The Coffee Code. Safe to run multiple times.</p>
+<button id="btn" onclick="runImport()">Import 34 Contacts</button>
+<div id="log"></div>
+<script>
+const SB = supabase.createClient(
+  "https://zotmzaezodgszcjbfktt.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvdG16YWV6b2Rnc3pjamJma3R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODQ1MzAsImV4cCI6MjA5MDU2MDUzMH0.wGxNInF52zyhwHsDvuWJDRpVrxgDBgCCOVlq0rTHhyE"
+);
+
+const CONTACTS = [
+  {handle:"danishealthyeats",      name:"Danielle Breiner",        followers:"605K",  niche:"Holistic Nutrition / Healthy Recipes",   location:"United States",       email:"danibreiner@neonroseagency.com",   fitScore:7},
+  {handle:"chefreillymeehan",      name:"Reilly Meehan",           followers:"439K",  niche:"Recipes / Cookbook Author",              location:"United States",       email:"",                                fitScore:7},
+  {handle:"brookemason",           name:"Brooke Mason",            followers:"406K",  niche:"Lifestyle / Fashion / Wedding",          location:"United States",       email:"",                                fitScore:6},
+  {handle:"_balancedwithbritt",    name:"Brittany Voges",          followers:"207K",  niche:"Healthy Eats / Fitness / Mom",           location:"St. Louis, MO",       email:"",                                fitScore:7},
+  {handle:"lizwebber_",            name:"Liz Webber",              followers:"189K",  niche:"Motherhood / Vlogs / Casual Style",      location:"United States",       email:"",                                fitScore:6},
+  {handle:"ashleylaurentassano",   name:"Ashley Tassano",          followers:"166K",  niche:"Hosting / Recipes / Party Ideas",        location:"United States",       email:"ashleylaurentassano@gmail.com",   fitScore:8},
+  {handle:"audreylillian",         name:"Audrey Lillian",          followers:"343K",  niche:"Wellness / Nourishing Recipes",          location:"United States",       email:"",                                fitScore:7},
+  {handle:"aubreeemaymurphy",      name:"Aubree Murphy",           followers:"50.1K", niche:"Lifestyle / Austin",                     location:"Austin, TX",          email:"aubree@social-alchemists.com",    fitScore:7},
+  {handle:"maddison_lynn",         name:"Maddison",                followers:"33.3K", niche:"Fashion / Outfits",                      location:"LA / Detroit",        email:"",                                fitScore:5},
+  {handle:"lutinii",               name:"Dani Lutin",              followers:"50.1K", niche:"Iced Coffee / Lifestyle",                location:"NY / NJ / FL",        email:"",                                fitScore:9},
+  {handle:"shelb_ditch",           name:"Shelby Ditch",            followers:"77.7K", niche:"Mom Outfits / Affordable Finds",         location:"Kansas City, MO",     email:"",                                fitScore:6},
+  {handle:"msbrittfisher",         name:"Britt Fisher",            followers:"24.5K", niche:"Coffee / Motherhood / Family",           location:"United States",       email:"",                                fitScore:9},
+  {handle:"_jamielwolf",           name:"Jamie Wolf",              followers:"15K",   niche:"Philly Lifestyle / Food",                location:"Philadelphia, PA",    email:"jamiewolf@grail-talent.com",      fitScore:7},
+  {handle:"mrstiffanysullivan",    name:"Tiffany Sullivan",        followers:"4.6K",  niche:"Mom Life / UGC / Coffee",                location:"New York, NY",        email:"tiffanysullivann@gmail.com",      fitScore:8},
+  {handle:"caitlindechiara",       name:"Caitlin DeChiara",        followers:"91.2K", niche:"Mom Life / Coffee",                      location:"United States",       email:"caitlin@infagency.com",           fitScore:9},
+  {handle:"thecoffeecondiments",   name:"Brice Perry",             followers:"12K",   niche:"Coffee / Motherhood",                    location:"CA / TN / AZ",        email:"",                                fitScore:9},
+  {handle:"doughbabybarista",      name:"Yvonne Cortez",           followers:"10.8K", niche:"Coffee Recipes / Reviews",               location:"United States",       email:"yvonnncortez@gmail.com",          fitScore:9},
+  {handle:"francescamia",          name:"Francesca Mia",           followers:"16.3K", niche:"Wifey / Mommy Life / UGC",               location:"United States",       email:"",                                fitScore:7},
+  {handle:"purelyliving.bymaria",  name:"Maria Fernanda Lopez",    followers:"40.6K", niche:"Latina Recipes / UGC",                   location:"United States",       email:"",                                fitScore:8},
+  {handle:"avocandreatoast",       name:"Andrea",                  followers:"8.4K",  niche:"Food / Cozy Homebody",                   location:"United States",       email:"",                                fitScore:8},
+  {handle:"mackenziejdempsey",     name:"Mackenzie Dempsey",       followers:"23.1K", niche:"Everyday Style / Simple Recipes",        location:"British Columbia",    email:"mackenzie@socialaxisagency.com",  fitScore:7},
+  {handle:"mandidincau",           name:"Mandi Schermann",         followers:"7.4K",  niche:"Outfits / Life / Travel",                location:"United States",       email:"mandidincau@gmail.com",           fitScore:5},
+  {handle:"thefarmstyle",          name:"Kayla Zenner",            followers:"100K",  niche:"Family Recipes / Farm Life",             location:"Idaho",               email:"hello@kaylazenner.com",           fitScore:8},
+  {handle:"chi.homecafe",          name:"Chi",                     followers:"118K",  niche:"Home Cafe Drinks / Sweets",              location:"Los Angeles, CA",     email:"chi.homecafe@gmail.com",          fitScore:9},
+  {handle:"tellezjoanna_",         name:"Joanna Tellez",           followers:"77.7K", niche:"Mom / Beauty / Lifestyle",               location:"Arizona",             email:"contact@tellezjoanna.com",        fitScore:7},
+  {handle:"niikkifogg",            name:"Nikki",                   followers:"66.7K", niche:"Motherhood / Meals / Fitness",           location:"Arizona",             email:"",                                fitScore:7},
+  {handle:"salsasdececilia",       name:"Cecilia Saiden-Davis",    followers:"33.2K", niche:"Recipes / Faith / Family",               location:"United States",       email:"cecisdavis@gmail.com",            fitScore:7},
+  {handle:"monicampaulino",        name:"Monica Paulino",          followers:"40.3K", niche:"Life / Style",                           location:"San Francisco Bay",   email:"hello@monicampaulino.com",        fitScore:6},
+  {handle:"iamjbreton",            name:"Jomely Breton",           followers:"23.1K", niche:"Travel / Mom / Cafecito",                location:"United States",       email:"",                                fitScore:8},
+  {handle:"jenniesuk",             name:"Jennie Suk",              followers:"22.8K", niche:"Selfcare / Baking / Lifestyle",          location:"Houston, TX",         email:"jenniesuk@gmail.com",             fitScore:7},
+  {handle:"kaylla_spencer",        name:"Kaylla Spencer",          followers:"257K",  niche:"Family / Personal Blog",                 location:"United States",       email:"",                                fitScore:7},
+  {handle:"catherine.grey",        name:"Catherine Grey",          followers:"254K",  niche:"Home Decor / Outfits / Amazon Finds",    location:"Greenville, SC",      email:"hello@catherine-grey.com",        fitScore:7},
+  {handle:"elliedulude",           name:"Ellie Dulude",            followers:"14.8K", niche:"Lifestyle / Daily Life / Mom",           location:"Traverse City, MI",   email:"",                                fitScore:6},
+  {handle:"ashlee_hardin",         name:"Ashlee Hardin",           followers:"1.4K",  niche:"SAHM / Family Blog",                     location:"United States",       email:"ash.hardin94@gmail.com",          fitScore:6},
+];
+
+function log(msg, cls) {
+  const d = document.getElementById("log");
+  const div = document.createElement("div");
+  div.className = cls||"";
+  div.textContent = msg;
+  d.appendChild(div);
+  d.scrollTop = d.scrollHeight;
+}
+
+async function runImport() {
+  const btn = document.getElementById("btn");
+  btn.disabled = true;
+  btn.textContent = "Importing...";
+  document.getElementById("log").innerHTML = "";
+
+  const {data:existing} = await SB.from("influencers").select("handle");
+  const existing_set = new Set((existing||[]).map(r=>r.handle.toLowerCase()));
+  log("Found "+existing_set.size+" contacts in CRM — skipping duplicates", "skip");
+  log("", "");
+
+  let added=0, skipped=0;
+  const today = new Date().toISOString().split("T")[0];
+
+  for (const c of CONTACTS) {
+    if (existing_set.has(c.handle.toLowerCase())) {
+      log("skip  @"+c.handle+" — already exists", "skip");
+      skipped++;
+      continue;
+    }
+    const inf = {
+      id: Date.now().toString()+Math.random().toString(36).slice(2,5),
+      name:c.name, handle:c.handle, account:"tcc",
+      niche:c.niche, followers:c.followers, engagement:"",
+      email:c.email, location:c.location,
+      igUrl:"https://www.instagram.com/"+c.handle,
+      fitScore:c.fitScore, fitReason:"", bestAngle:"",
+      status:"active", steps:{}, notes:"", addedDate:today,
+    };
+    const {error} = await SB.from("influencers").upsert(
+      {handle:c.handle, data:inf, updated_at:new Date().toISOString()},
+      {onConflict:"handle"}
+    );
+    if (error) { log("ERR   @"+c.handle+" — "+error.message, "err"); }
+    else { log("added @"+c.handle+" — "+c.niche+" — "+c.followers, "ok"); added++; }
+    await new Promise(r=>setTimeout(r,80));
+  }
+
+  log("", "");
+  log("Done. Added: "+added+"  |  Skipped: "+skipped, "bold");
+  log("Open tcc-crm.vercel.app — The Coffee Code tab", "skip");
+  btn.textContent = "Done — "+added+" added";
+}
+</script>
+</body>
+</html>
