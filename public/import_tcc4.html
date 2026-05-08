@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>TCC CRM — Batch 4</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js" crossorigin></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f9f7f4;font-family:Georgia,serif;padding:30px;color:#1a1208}
+h1{color:#0d7a5f;font-size:20px;margin-bottom:6px}
+p{color:#8a7458;font-size:13px;margin-bottom:16px;line-height:1.6}
+button{background:#0d7a5f;color:#fff;border:none;padding:12px 28px;font-size:14px;border-radius:6px;cursor:pointer;font-family:monospace}
+button:disabled{opacity:.5;cursor:not-allowed}
+#progress{margin-top:14px;background:#e8e0d4;border-radius:6px;height:8px;overflow:hidden;display:none}
+#bar{height:100%;background:#0d7a5f;width:0%;transition:width .2s}
+#log{margin-top:16px;font-family:monospace;font-size:11px;line-height:1.8;max-height:400px;overflow-y:auto;background:#fff;border:1px solid #e0d4c0;border-radius:6px;padding:12px}
+.ok{color:#0d7a5f}.skip{color:#b0a080}.err{color:#c0392b}.bold{font-weight:bold;font-size:13px}
+</style>
+</head>
+<body>
+<h1>The Coffee Code — Batch 4 (158 handles)</h1>
+<p>Skips any already in the CRM. All go to The Coffee Code account. Profile details can be filled in later.</p>
+<button id="btn" onclick="runImport()">Import Now</button>
+<div id="progress"><div id="bar"></div></div>
+<div id="log"></div>
+<script>
+const SB = supabase.createClient(
+  "https://zotmzaezodgszcjbfktt.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpvdG16YWV6b2Rnc3pjamJma3R0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5ODQ1MzAsImV4cCI6MjA5MDU2MDUzMH0.wGxNInF52zyhwHsDvuWJDRpVrxgDBgCCOVlq0rTHhyE"
+);
+
+const HANDLES = [
+  "alexhomebarista","caffeinatedliv","amsterdani","keeperathome_designs","diasaditya",
+  "homeb_arista","coffeewithrafaela","mrsmariealvarezp","created2coffee","coffeebyhailey",
+  "grindbrewdrink","themilkartist","lizhappybeans","relaxoespresso","sharonlikescoffee",
+  "houstoncoffeeblogger","meyerbrews","wanderingashtree","emstagrim","pullandpourcoffee",
+  "noahsterncoffee","ryantagcoffee","baristainpajamas","createdtocoffee","thecafecitocorner",
+  "amberalejandrez__","lancehedrick","foodieeshh","brookelynlikesespresso","yescoffeenodecaf",
+  "specialtycoffeeguy","barista_karl","coffeeandclicks","ju5tbrew","cafearun",
+  "coffeewithaman","ambriadrinkscoffee","milkteamali","the.tattooed.barista","codealatte",
+  "ethanrodecoffee","coffeewithcandace","thesaltandlightcoffee","espressoyourselfflorida",
+  "codytriesstuff","baristahamburg","claudia.harrington","yourfavkimmy","courts.coffee.corner",
+  "sprometheus","pourwithella","coffee.with.ruth","daddygotcoffee","thatconnorgurl",
+  "icedcoffeeconnoisseur","dahliacoffeeco","coffee_rn","cafecito_sg","mariosegno",
+  "katiescoffeecorner","frankmontielb","cj.tuaz0n","kcbrewtique","coffeebae97",
+  "lutinii","fifiscoffee","hannahcollective","kou.003","cafewithmel",
+  "latte.w.laura","zachrjohnston","thebrownsbistro","chloejg","thecoffeegirly",
+  "coffeeandchampagne","thethriftwitch","baristahustle","courtney_marie_owens","alexmojica",
+  "baristart","kayleens_coffee","softpourn","therookiebarista","abbyscoffeecorner",
+  "espressobarred","baristasisters_flickgab","coffeecouple17","goldenbrown.coffee",
+  "harvestingfigs","life.of.ryana","maraalyana","tjscoffeeadventures","leniiitas",
+  "austinrutland","pack.kati","thetattooedhusband","ristr8to","barista_jennyeah",
+  "barista_life","barista_dash","baristadaz","boramum","barista_fraddy",
+  "tristathebarista","u_m_p_a_u_l","cabellcoffee","baristakrut","barista_lq",
+  "barista_hany","baristabrian","littleannemarie","barista.doha","sharebykatie",
+  "mikaeljasin","missedenmarie","jeon_jooyeon","bernulia","muhammadaga",
+  "caffeinaided","toastandkiss","jimmydecicco5","slightly_overcaffeinated","anagainzalez",
+  "homecoffeebeans","missicalvert","micsmox","whereisscottrao","home_barista_joe",
+  "thecoffeesnob","brew.by.strizh","barista_essentials","coffeebro0","nadiaxcoffee",
+  "coolbeansnsb","ariibuk","floridagirlhalle","erin_colleen96","selasimonetta",
+  "conversingcoffee","416_coffee","ourcoffeeshelter","kyle.rowsell","bivouac.coffee",
+  "paxandbeneficia","maddyrenne","gigikatss","iviethefoodie","brickandmortarcof",
+  "dqflook","floridacoffeeculture","kianaenglish7","amandasekulic","experimental.coffee",
+  "brewedbyjay","sophmosca","roasterkat","iamcoffeeartist","coffeekevtok",
+  "ericcoffeeguy","rob_mcgee","cc.campbell","drewfromladue","joeycamasta",
+  "equalpartscoffee","denejones00"
+];
+
+function log(msg, cls) {
+  const d = document.getElementById("log");
+  const div = document.createElement("div");
+  div.className = cls||"";
+  div.textContent = msg;
+  d.appendChild(div);
+  d.scrollTop = d.scrollHeight;
+}
+
+async function runImport() {
+  const btn = document.getElementById("btn");
+  btn.disabled = true;
+  btn.textContent = "Importing...";
+  document.getElementById("log").innerHTML = "";
+  document.getElementById("progress").style.display = "block";
+
+  const {data:existing} = await SB.from("influencers").select("handle");
+  const existing_set = new Set((existing||[]).map(r=>r.handle.toLowerCase()));
+  log("Found "+existing_set.size+" contacts in CRM", "skip");
+  log("Starting import of "+HANDLES.length+" handles...", "skip");
+  log("", "");
+
+  let added=0, skipped=0;
+  const today = new Date().toISOString().split("T")[0];
+  const bar = document.getElementById("bar");
+
+  for (let idx=0; idx<HANDLES.length; idx++) {
+    const h = HANDLES[idx];
+    bar.style.width = Math.round((idx+1)/HANDLES.length*100)+"%";
+
+    if (existing_set.has(h.toLowerCase())) {
+      skipped++;
+      continue;
+    }
+
+    const inf = {
+      id: Date.now().toString()+Math.random().toString(36).slice(2,5),
+      name:"", handle:h, account:"tcc",
+      niche:"", followers:"", engagement:"",
+      email:"", location:"",
+      igUrl:"https://www.instagram.com/"+h,
+      fitScore:5, fitReason:"", bestAngle:"",
+      status:"active", steps:{}, notes:"", addedDate:today,
+    };
+
+    const {error} = await SB.from("influencers").upsert(
+      {handle:h, data:inf, updated_at:new Date().toISOString()},
+      {onConflict:"handle"}
+    );
+
+    if (error) { log("ERR @"+h+" — "+error.message, "err"); }
+    else { added++; if(added%10===0) log("Added "+added+" so far...", "ok"); }
+
+    if (idx%50===49) await new Promise(r=>setTimeout(r,300));
+    else await new Promise(r=>setTimeout(r,40));
+  }
+
+  log("", "");
+  log("Done. Added: "+added+"  |  Skipped (duplicates): "+skipped, "bold");
+  log("Open tcc-crm.vercel.app — The Coffee Code tab", "skip");
+  btn.textContent = "Done — "+added+" added";
+}
+</script>
+</body>
+</html>
